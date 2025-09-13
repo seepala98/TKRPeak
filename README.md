@@ -1,275 +1,138 @@
 # Stock Information Chrome Extension
 
-A powerful Chrome extension that provides instant stock information when browsing financial news and websites. Simply select any stock ticker or company name, right-click, and get real-time stock data in a beautiful popup.
-
-![Extension Demo](https://img.shields.io/badge/version-1.0-blue) ![Chrome Extension](https://img.shields.io/badge/chrome-extension-green) ![Manifest V3](https://img.shields.io/badge/manifest-v3-orange)
+A simple, elegant Chrome extension that provides instant stock information with beautiful charts and auto-detection of selected text.
 
 ## ✨ Features
 
-- 🚀 **Instant Stock Data**: Real-time stock prices and market information
-- 📊 **Mini Charts**: Visual price trends for quick analysis
-- 🎯 **Smart Detection**: Recognizes both ticker symbols (AAPL) and company names (Apple Inc.)
-- 🌐 **Universal Compatibility**: Works on any website
-- 💹 **Comprehensive Data**: Price, daily change, high/low, market cap
-- 🔗 **External Links**: Direct links to Yahoo Finance and Google Finance
-- 🎨 **Beautiful UI**: Modern, responsive popup design with dark mode support
+- **⚡ Auto-Opening Popup**: Right-click selected text → popup opens instantly!
+- **🎯 Smart Auto-Detection**: Automatically detects stock tickers when you select text on any webpage
+- **📊 Dynamic Period Charts**: Interactive price charts with multiple time periods (1D, 5D, 1M, 6M, 1Y)
+- **🔄 Period-Aware Data**: High/low/change values adapt to selected timeframe
+- **🚀 One-Click Access**: Click the extension icon for instant stock data
+- **💰 Real-time Data**: Current price, period change, high/low, market cap from Yahoo Finance
+- **🧹 Auto-Clear**: Close popup to automatically clear data for fresh selections
+- **🔗 Quick Links**: Direct links to Yahoo Finance and Google Finance
+- **📱 Clean Interface**: Modern, responsive design with gradient backgrounds
 
-## 📸 Screenshots
+## 🎮 How to Use
 
-### Context Menu Integration
-When you select a stock ticker or company name, right-click to see the extension option:
-```
-Selected: AAPL
-Right-click menu:
-├── Cut
-├── Copy
-├── Paste
-└── 📊 Get Stock Information for 'AAPL'  ← Extension
-```
+### Method 1: One-Click Right-Click (Fastest!)
+1. **Select stock text** on any webpage (AAPL, Tesla, etc.)
+2. **Right-click** → "Get Stock Information"  
+3. **Popup opens automatically** with stock data and charts!
+4. **Close popup** to clear data and start fresh
 
-### Stock Information Popup
-The popup displays comprehensive stock data:
-```
-┌─ AAPL ──────────────────────────────┐
-│                                     │
-│            USD 150.23               │
-│        +2.45 (+1.65%) ⬆️             │
-│                                     │
-│  Day High:     151.20               │
-│  Day Low:      147.80               │
-│  Market Cap:   $2.45T               │
-│                                     │
-│  [Mini Chart] ╱╲╱╲                  │
-│                                     │
-│  [📈 Yahoo Finance] [🔍 Google Finance] │
-└─────────────────────────────────────┘
-```
+### Method 2: Auto-Detection
+1. **Select stock text** on any webpage
+2. **Click the extension icon** 📊
+3. **Click "Get Stock Info"** to fetch data instantly
+4. **View charts** and switch between time periods
 
-## 🚀 Quick Start
+### Method 3: Manual Search  
+1. **Click the extension icon** 📊
+2. **Type a stock ticker** in the input field
+3. **Press Enter** or click Search
+4. **Or choose** from popular stocks (AAPL, MSFT, etc.)
 
-### Option 1: Load in Developer Mode (Recommended for Development)
+## 📈 Chart Features
 
-1. **Clone or Download** this repository
-2. **Open Chrome** and navigate to `chrome://extensions/`
-3. **Enable Developer mode** (toggle in top-right)
-4. **Click "Load unpacked"** and select the extension directory
-5. **Test the extension** on any website with stock tickers
+- **Interactive Time Periods**: 1D, 5D, 1M, 6M, 1Y
+- **Price Visualization**: Clean line charts showing price movements
+- **Color Coding**: Green for gains, red for losses
+- **Real-time Updates**: Charts update with fresh data
 
-### Option 2: Docker Testing Environment
+## 🛠 Installation
 
-For comprehensive testing across multiple financial websites:
+### Quick Install (Chrome Web Store)
+*Coming Soon - Currently in development*
 
-```bash
-# Start the testing environment
-./test-extension.sh start
+### Developer Install
+1. Download or clone this repository
+2. Open Chrome → `chrome://extensions/`
+3. Enable **"Developer mode"** (top right)
+4. Click **"Load unpacked"**
+5. Select the extension folder
+6. Look for the 📊 icon in your toolbar!
 
-# Access the browser at http://localhost:6080
-# VNC Password: testing
-
-# Stop the testing environment
-./test-extension.sh stop
-```
-
-## 📁 Project Structure
+## 🏗 Project Structure
 
 ```
 stock_extension/
-├── manifest.json           # Extension configuration (Manifest V3)
-├── background.js           # Service worker for API calls & context menu
-├── content.js             # Content script for popup display
-├── popup.css              # Styles for stock information popup
-├── popup.html             # Extension popup (click on extension icon)
-├── icons/                 # Extension icons (16px, 48px, 128px)
-│   ├── icon16.png
-│   ├── icon48.png
-│   ├── icon128.png
-│   └── icon.svg
-├── Dockerfile             # Docker testing environment
-├── docker-compose.yml     # Docker Compose configuration
-├── test-extension.sh      # Testing automation script
-└── README.md             # This documentation
+├── manifest.json          # Extension configuration
+├── background.js          # API handling & data storage  
+├── content.js             # Page text detection
+├── popup.html             # Main interface
+├── popup.js               # UI logic & charts
+├── icons/                 # Extension icons
+└── README.md              # Documentation
 ```
 
-## 🔧 Development
+## 📊 Supported Assets
 
-### Prerequisites
+- **Major Stocks**: AAPL, MSFT, GOOGL, TSLA, NVDA, AMZN, META, NFLX, etc.
+- **Company Names**: Apple → AAPL, Tesla → TSLA, Microsoft → MSFT
+- **Popular Tickers**: Built-in buttons for quick access
+- **Auto-Recognition**: Smart extraction from selected text
 
-- Google Chrome or Chromium browser
-- Docker (optional, for testing environment)
-- Basic knowledge of Chrome Extensions
+## 🔧 Technical Details
 
-### Local Development
+- **Manifest V3**: Latest Chrome extension standards
+- **Yahoo Finance API**: Reliable real-time stock data
+- **Canvas Charts**: Lightweight, fast chart rendering  
+- **CSP Compliant**: Secure content security policies
+- **Cross-Origin Handling**: Background script manages API calls
 
-1. **Load the extension** in Chrome (see Quick Start above)
-2. **Make changes** to the code files
-3. **Reload the extension** in Chrome Extensions page
-4. **Test on financial websites** like:
-   - [Yahoo Finance](https://finance.yahoo.com)
-   - [MarketWatch](https://www.marketwatch.com)
-   - [Bloomberg](https://www.bloomberg.com/markets)
-   - [Reuters](https://www.reuters.com/markets)
+## 🎨 Design Highlights
 
-### API Integration
+- **Modern Gradient UI**: Beautiful purple-to-blue gradients
+- **Glassmorphism Effects**: Backdrop blur and transparency
+- **Responsive Layout**: Works perfectly in popup window
+- **Smooth Animations**: Subtle hover and transition effects
+- **Accessible Controls**: Clear buttons and readable text
 
-The extension uses Yahoo Finance's unofficial API for stock data:
-- **Primary API**: `https://query1.finance.yahoo.com/v8/finance/chart/{ticker}`
-- **Fallback API**: `https://query1.finance.yahoo.com/v7/finance/quote?symbols={ticker}`
-- **No API keys required** - works directly from browser
+## 🔒 Privacy
 
-### Supported Stock Tickers
+- ✅ **No data collection** - all processing is local
+- ✅ **No tracking** - extension only fetches public stock data  
+- ✅ **Secure API calls** - handled through background script
+- ✅ **Minimal permissions** - only accesses active tab when needed
 
-The extension recognizes:
-- **Standard tickers**: AAPL, TSLA, MSFT, GOOGL, etc.
-- **Company names**: Apple, Tesla, Microsoft, Google, etc.
-- **Various formats**: $AAPL, AAPL.NASDAQ, etc.
+## 🚀 Performance
 
-## 🧪 Testing
-
-### Automated Testing with Docker
-
-```bash
-# Start testing environment
-./test-extension.sh start
-
-# View logs
-./test-extension.sh logs
-
-# Restart environment
-./test-extension.sh restart
-
-# Stop environment
-./test-extension.sh stop
-```
-
-### Manual Testing Checklist
-
-- [ ] **Basic functionality**: Select ticker → Right-click → Extension appears
-- [ ] **Stock data accuracy**: Compare with Yahoo Finance
-- [ ] **Company name recognition**: Try "Apple Inc." → Should show AAPL data
-- [ ] **Error handling**: Try invalid ticker "INVALID123"
-- [ ] **Multiple websites**: Test on Yahoo Finance, MarketWatch, Bloomberg
-- [ ] **Responsive design**: Test popup on different screen sizes
-- [ ] **Performance**: Extension doesn't slow down page loading
-
-### Test Cases
-
-| Test Case | Input | Expected Result |
-|-----------|-------|-----------------|
-| Valid ticker | Select "AAPL" | Stock popup with Apple data |
-| Company name | Select "Tesla Inc." | Stock popup with TSLA data |
-| Invalid ticker | Select "INVALID123" | Error popup |
-| Mixed case | Select "aapl" | Stock popup (normalized to AAPL) |
-| With $ symbol | Select "$MSFT" | Stock popup with Microsoft data |
-
-## 🛠️ Technical Details
-
-### Chrome Extension Manifest V3
-
-The extension uses the latest Manifest V3 with:
-- **Service Worker**: Background script for API calls
-- **Content Scripts**: Injected into all pages for UI
-- **Context Menus**: Right-click integration
-- **Host Permissions**: Access to stock APIs
-
-### Key Technologies
-
-- **Vanilla JavaScript**: No external dependencies
-- **CSS3**: Modern styling with animations
-- **SVG**: Scalable mini charts
-- **Chrome Extension APIs**: Context menus, tabs, storage
-
-### Performance Optimizations
-
-- ⚡ **Lazy loading**: API calls only when requested
-- 🧠 **Smart caching**: Avoid duplicate requests
-- 🎨 **CSS animations**: Smooth popup transitions
-- 📱 **Responsive design**: Works on all screen sizes
-
-## 🔒 Privacy & Security
-
-- ✅ **No data collection**: Extension doesn't store user data
-- ✅ **API calls only**: Connects only to Yahoo Finance APIs
-- ✅ **Open source**: Full code transparency
-- ✅ **Minimal permissions**: Only essential Chrome permissions
+- **Fast Loading**: Optimized code and minimal dependencies
+- **Low Memory**: Efficient background script with cleanup
+- **Quick Response**: Instant text detection and data fetching
+- **Cached Data**: Smart caching to reduce API calls
 
 ## 🐛 Troubleshooting
 
-### Common Issues
+### Extension Not Working?
+1. Check if it's enabled in `chrome://extensions/`
+2. Try reloading the extension
+3. Refresh the webpage you're testing on
 
-**Extension not appearing in right-click menu:**
-- Ensure text is selected before right-clicking
-- Check if extension is enabled in Chrome Extensions page
+### No Chart Showing?
+- Charts appear after data is loaded
+- Try switching between time periods
+- Check browser console for errors
 
-**Stock data not loading:**
-- Check browser console for API errors
-- Verify internet connection
-- Try a different, well-known ticker (e.g., AAPL)
+### Auto-Detection Not Working?
+- Make sure text is properly selected
+- Try selecting ticker symbols (AAPL) vs company names (Apple)
+- Click the extension icon after selecting text
 
-**Popup not showing:**
-- Disable other extensions temporarily
-- Clear browser cache and reload
-- Check if popup is hidden behind other elements
+## 📝 License
 
-### Debug Mode
-
-Enable Chrome DevTools console to see extension logs:
-1. Right-click on any page → "Inspect"
-2. Go to "Console" tab
-3. Look for extension-related messages
+MIT License - Feel free to use, modify, and distribute!
 
 ## 🤝 Contributing
 
-Contributions are welcome! Here's how to get started:
-
-1. **Fork** the repository
-2. **Create** a feature branch: `git checkout -b feature-name`
-3. **Make** your changes
-4. **Test** thoroughly using the Docker environment
-5. **Submit** a pull request
-
-### Development Guidelines
-
-- Follow existing code style
-- Add comments for complex logic
-- Test on multiple websites
-- Ensure cross-browser compatibility
-- Update documentation for new features
-
-## 📋 Roadmap
-
-- [ ] **International markets**: Support for non-US stocks
-- [ ] **Crypto support**: Bitcoin, Ethereum, etc.
-- [ ] **Portfolio tracking**: Save favorite stocks
-- [ ] **Price alerts**: Notify when stocks hit targets
-- [ ] **Advanced charts**: Candlestick, technical indicators
-- [ ] **News integration**: Related news articles
-- [ ] **Firefox support**: Port to Firefox Extension
-
-## 📜 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Yahoo Finance**: For providing stock data APIs
-- **Chrome Extensions**: For excellent documentation
-- **Financial news websites**: For testing opportunities
-
-## 📞 Support
-
-If you encounter any issues:
-
-1. **Check** the troubleshooting section above
-2. **Search** existing GitHub issues
-3. **Create** a new issue with details:
-   - Chrome version
-   - Extension version
-   - Steps to reproduce
-   - Console error messages
+We welcome contributions! Please feel free to:
+- Report bugs and issues
+- Suggest new features  
+- Submit pull requests
+- Improve documentation
 
 ---
 
-**Made with ❤️ for financial enthusiasts and developers**
-
-*Get instant stock data anywhere on the web!* 📊📈
-# TKRPeak
+**Made with ❤️ for traders and investors everywhere** 📊✨

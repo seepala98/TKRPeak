@@ -37,64 +37,287 @@
             opacity: 0.8;
         }
         
+        /* Stock Data Styles */
+        .stock-data {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .stock-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .stock-symbol {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .stock-price {
+            font-size: 28px;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        
+        .stock-change {
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .positive { color: #22c55e; }
+        .negative { color: #ef4444; }
+        
+        .stock-details {
+            font-size: 12px;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .external-links {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .link-btn {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .link-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Instructions when no stock data */
         .instructions {
             background: rgba(255, 255, 255, 0.15);
             border-radius: 8px;
             padding: 16px;
             margin-bottom: 20px;
             backdrop-filter: blur(8px);
+            text-align: center;
         }
         
         .instructions h3 {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 600;
             margin-bottom: 8px;
         }
         
-        .instructions ol {
+        .instructions p {
             font-size: 13px;
             line-height: 1.5;
-            margin-left: 16px;
+            opacity: 0.9;
         }
         
-        .instructions li {
-            margin-bottom: 4px;
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
         }
         
-        .features {
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .hidden { display: none; }
+        
+        /* Auto Detection Styles */
+        .auto-detection {
             background: rgba(255, 255, 255, 0.15);
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 16px;
+            margin-bottom: 16px;
+            backdrop-filter: blur(8px);
+            text-align: center;
+        }
+        
+        .auto-detection h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #ffd700;
+        }
+        
+        .auto-detection p {
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+        
+        /* Manual Input Styles */
+        .manual-input {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
             backdrop-filter: blur(8px);
         }
         
-        .features h3 {
+        .manual-input h3 {
             font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .input-group input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+        }
+        
+        .input-group input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .popular-stocks h4 {
+            font-size: 12px;
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+        
+        .ticker-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .ticker-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Button Styles */
+        .action-btn {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 4px;
+        }
+        
+        .action-btn:hover {
+            background: #3367d6;
+        }
+        
+        .secondary-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 4px;
+        }
+        
+        .secondary-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Chart Styles */
+        .chart-controls {
+            margin: 15px 0;
+        }
+        
+        .chart-controls h4 {
+            font-size: 12px;
             font-weight: 600;
             margin-bottom: 8px;
         }
         
-        .feature-list {
-            font-size: 12px;
-            line-height: 1.4;
-        }
-        
-        .feature-item {
+        .period-buttons {
             display: flex;
-            align-items: center;
-            margin-bottom: 4px;
+            gap: 4px;
+            margin-bottom: 10px;
         }
         
-        .feature-icon {
-            margin-right: 8px;
-            font-size: 14px;
-        }
-        
-        .footer {
-            text-align: center;
-            margin-top: 20px;
+        .period-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 6px 8px;
+            border-radius: 4px;
             font-size: 11px;
-            opacity: 0.7;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .period-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .period-btn.active {
+            background: #4285f4;
+            border-color: #4285f4;
+        }
+        
+        .chart-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 8px;
+        }
+        
+        .chart-container canvas {
+            width: 100%;
+            height: auto;
         }
     </style>
 </head>
@@ -103,47 +326,100 @@
         <div class="header">
             <div class="logo">📊</div>
             <div class="title">Stock Information</div>
-            <div class="subtitle">Instant stock data on any webpage</div>
+            <div class="subtitle" id="subtitle">Instant stock data on any webpage</div>
         </div>
         
-        <div class="instructions">
-            <h3>How to Use:</h3>
-            <ol>
-                <li>Select any stock ticker (e.g., AAPL, TSLA)</li>
-                <li>Right-click and choose "Get Stock Information"</li>
-                <li>View real-time price and market data</li>
-            </ol>
+        <!-- Loading State -->
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Loading stock data...</p>
         </div>
         
-        <div class="features">
-            <h3>Features:</h3>
-            <div class="feature-list">
-                <div class="feature-item">
-                    <span class="feature-icon">💰</span>
-                    <span>Real-time price data</span>
+        <!-- Stock Data Display -->
+        <div id="stockData" class="stock-data hidden">
+            <div class="stock-header">
+                <div class="stock-symbol" id="stockSymbol">-</div>
+            </div>
+            
+            <div class="stock-price" id="stockPrice">-</div>
+            <div class="stock-change" id="stockChange">-</div>
+            
+            <div class="stock-details">
+                <div class="detail-row">
+                    <span class="label">Day High:</span>
+                    <span class="value" id="dayHigh">-</span>
                 </div>
-                <div class="feature-item">
-                    <span class="feature-icon">📈</span>
-                    <span>Daily performance metrics</span>
+                <div class="detail-row">
+                    <span class="label">Day Low:</span>
+                    <span class="value" id="dayLow">-</span>
                 </div>
-                <div class="feature-item">
-                    <span class="feature-icon">📊</span>
-                    <span>Mini price charts</span>
+                <div class="detail-row">
+                    <span class="label">Market Cap:</span>
+                    <span class="value" id="marketCap">-</span>
                 </div>
-                <div class="feature-item">
-                    <span class="feature-icon">🔗</span>
-                    <span>Links to Yahoo & Google Finance</span>
+            </div>
+            
+            <!-- Chart Time Period Selector -->
+            <div class="chart-controls">
+                <h4>📊 Chart Period</h4>
+                <div class="period-buttons">
+                    <button class="period-btn active" data-period="1d">1D</button>
+                    <button class="period-btn" data-period="5d">5D</button>
+                    <button class="period-btn" data-period="1mo">1M</button>
+                    <button class="period-btn" data-period="6mo">6M</button>
+                    <button class="period-btn" data-period="1y">1Y</button>
                 </div>
-                <div class="feature-item">
-                    <span class="feature-icon">🏢</span>
-                    <span>Company name recognition</span>
+                <div id="chartContainer" class="chart-container">
+                    <canvas id="stockChart" width="280" height="150"></canvas>
                 </div>
+            </div>
+            
+            <div class="external-links">
+                <a href="#" id="yahooLink" class="link-btn" target="_blank">📈 Yahoo Finance</a>
+                <a href="#" id="googleLink" class="link-btn" target="_blank">🔍 Google Finance</a>
             </div>
         </div>
         
-        <div class="footer">
-            v1.0 • Works on all websites
+        <!-- Auto-Detection -->
+        <div id="autoDetection" class="auto-detection hidden">
+            <h3>📍 Text Selected</h3>
+            <p>Found: <strong id="selectedText">-</strong></p>
+            <button id="useSelectedBtn" class="action-btn">📊 Get Stock Info</button>
+            <button id="ignoreSelectedBtn" class="secondary-btn">❌ Ignore</button>
+        </div>
+        
+        <!-- Manual Input -->
+        <div id="manualInput" class="manual-input">
+            <h3>📈 Enter Stock Symbol</h3>
+            <div class="input-group">
+                <input type="text" id="tickerInput" placeholder="AAPL, TSLA, NVDA..." maxlength="10">
+                <button id="searchBtn" class="action-btn">🔍 Search</button>
+            </div>
+            <div class="popular-stocks">
+                <h4>Popular:</h4>
+                <button class="ticker-btn" data-ticker="AAPL">AAPL</button>
+                <button class="ticker-btn" data-ticker="MSFT">MSFT</button>
+                <button class="ticker-btn" data-ticker="GOOGL">GOOGL</button>
+                <button class="ticker-btn" data-ticker="TSLA">TSLA</button>
+                <button class="ticker-btn" data-ticker="NVDA">NVDA</button>
+            </div>
+        </div>
+        
+        <!-- Instructions -->
+        <div id="instructions" class="instructions">
+            <h3>🎯 How to Use</h3>
+            <p>
+                • Select stock text on any page<br>
+                • Right-click → "Get Stock Information" (auto-opens!)<br>
+                • Or type a ticker symbol above<br>
+                • Close popup to clear and start fresh
+            </p>
+            <div style="margin-top: 12px;">
+                <button id="clearDataBtn" class="secondary-btn" style="font-size: 11px; padding: 6px 12px;">🧹 Clear & Start Fresh</button>
+            </div>
         </div>
     </div>
+    
+    <script src="popup.js"></script>
 </body>
 </html>

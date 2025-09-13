@@ -107,19 +107,24 @@ EOF
 
 RUN chmod +x /app/load_extension.sh
 
+# Create log directories
+RUN mkdir -p /var/log/supervisor /var/log
+
 # Create supervisor config
 RUN cat > /etc/supervisor/conf.d/services.conf << 'EOF'
 [supervisord]
 nodaemon=true
 user=root
+logfile=/tmp/supervisord.log
+pidfile=/var/run/supervisord.pid
 
 [program:extension_test]
 command=/app/load_extension.sh
 user=developer
 autostart=true
 autorestart=true
-stdout_logfile=/var/log/extension_test.log
-stderr_logfile=/var/log/extension_test.log
+stdout_logfile=/tmp/extension_test.log
+stderr_logfile=/tmp/extension_test.log
 EOF
 
 # Expose VNC port for remote access
@@ -133,4 +138,4 @@ ENV DISPLAY=:1
 ENV HOME=/home/developer
 
 # Default command
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+CMD ["/app/load_extension.sh"]

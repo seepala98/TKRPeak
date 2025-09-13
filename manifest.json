@@ -6,19 +6,36 @@
   "permissions": [
     "activeTab",
     "contextMenus",
-    "storage"
+    "storage",
+    "scripting",
+    "notifications"
   ],
   "host_permissions": [
     "https://*.yahoo.com/*",
+    "https://query1.finance.yahoo.com/*",
+    "https://query2.finance.yahoo.com/*",
     "https://*.finance.yahoo.com/*",
     "https://*.googlefinance.com/*",
-    "https://*.alphavantage.co/*"
+    "https://*.alphavantage.co/*",
+    "https://*.investors.com/*",
+    "https://research.investors.com/*",
+    "https://*.marketwatch.com/*",
+    "https://*.bloomberg.com/*",
+    "https://*.reuters.com/*",
+    "https://*.cnbc.com/*",
+    "https://*.fool.com/*",
+    "https://*.seekingalpha.com/*",
+    "https://*.morningstar.com/*",
+    "https://*.nasdaq.com/*",
+    "https://*.nyse.com/*",
+    "<all_urls>"
   ],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
-      "css": ["popup.css"]
+      "css": ["popup.css"],
+      "all_frames": true
     }
   ],
   "background": {
@@ -40,7 +57,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["popup.css", "chart.js"],
+      "resources": ["popup.css", "popup.js", "chart.js"],
       "matches": ["<all_urls>"]
     }
   ]
