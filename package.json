@@ -1,0 +1,29 @@
+{
+  "name": "stock-information-extension",
+  "version": "1.0.0",
+  "description": "Chrome extension that provides instant stock information when browsing financial news",
+  "main": "background.js",
+  "scripts": {
+    "test": "echo \"Use ./test-extension.sh to run tests in Docker environment\"",
+    "lint": "echo \"No linting configured yet\"",
+    "build": "echo \"No build step needed - extension ready to load\""
+  },
+  "keywords": [
+    "chrome-extension",
+    "stocks",
+    "finance",
+    "yahoo-finance",
+    "manifest-v3"
+  ],
+  "author": "Stock Extension Developer",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/stock-extension"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {},
+  "dependencies": {}
+}
