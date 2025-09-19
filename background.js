@@ -79,86 +79,155 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 });
 
-// Handle messages from content script (for CSP bypass)
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+// Handle messages from content script (for CSP bypass) and other parts of the extension
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   console.log("Background script received message:", request);
   
-  if (request.action === "ping") {
-    console.log("Background script ping received:", request.message);
-    sendResponse({ success: true, message: "Background script is alive", timestamp: Date.now() });
-    return false; // Synchronous response
-  }
-  
-  if (request.action === "getStoredStockData") {
-    console.log("🎯 Popup requesting stored stock data");
-    console.log("📦 Stored ticker:", selectedTicker);
-    console.log("📦 Stored data:", selectedStockData);
-    
-    if (selectedTicker && selectedStockData) {
-      console.log("✅ Sending stored stock data to popup");
-      sendResponse({ 
-        success: true, 
-        ticker: selectedTicker,
-        data: selectedStockData 
-      });
-    } else {
-      console.log("ℹ️ No stored stock data available");
-      sendResponse({ 
-        success: false, 
-        message: "No stock data available. Select a ticker first." 
-      });
-    }
-    return false; // Synchronous response
-  }
-  
-  if (request.action === "clearStoredData") {
-    console.log("🧹 Clearing stored stock data");
-    selectedTicker = null;
-    selectedStockData = null;
-    
-    // Clear badge
-    chrome.action.setBadgeText({text: ''});
-    
-    console.log("✅ Stored data cleared");
-    sendResponse({ success: true, message: "Data cleared" });
-    return false; // Synchronous response
-  }
-  
-  if (request.action === "fetchStockDataBackground") {
-    console.log("🎯 Background script received API request for:", request.ticker);
-    console.log("📊 Starting background API fetch process...");
-    
-    // Handle async operation properly
-    fetchStockDataInBackground(request.ticker, request.period)
-      .then(stockData => {
-        console.log("✅ Background script API call successful! Sending response:", stockData);
-        console.log(`🚀 Background script successfully fetched ${request.ticker} data!`);
-        sendResponse({ success: true, data: stockData });
-      })
-      .catch(error => {
-        console.error("❌ Background API fetch failed:", error);
-        console.error("🔍 Background script error details:", {
-          name: error.name,
-          message: error.message,
-          stack: error.stack
+  switch (request.action) {
+    case "ping":
+      console.log("Background script ping received:", request.message);
+      sendResponse({ success: true, message: "Background script is alive", timestamp: Date.now() });
+      return false; // Synchronous response
+
+    case "getStoredStockData":
+      console.log("🎯 Popup requesting stored stock data");
+      console.log("📦 Stored ticker:", selectedTicker);
+      console.log("📦 Stored data:", selectedStockData);
+      
+      if (selectedTicker && selectedStockData) {
+        console.log("✅ Sending stored stock data to popup");
+        sendResponse({ 
+          success: true, 
+          ticker: selectedTicker,
+          data: selectedStockData 
         });
-        console.log("📤 Sending error response to content script...");
+      } else {
+        console.log("ℹ️ No stored stock data available");
         sendResponse({ 
           success: false, 
-          error: error.message || "Unknown error in background script",
-          errorType: error.name,
-          timestamp: new Date().toISOString()
+          message: "No stock data available. Select a ticker first." 
         });
-      });
-    
-    console.log("⏳ Background script will respond asynchronously...");
-    return true; // Will respond asynchronously
+      }
+      return false; // Synchronous response
+
+    case "clearStoredData":
+      console.log("🧹 Clearing stored stock data");
+      selectedTicker = null;
+      selectedStockData = null;
+      
+      // Clear badge
+      chrome.action.setBadgeText({text: ''});
+      
+      console.log("✅ Stored data cleared");
+      sendResponse({ success: true, message: "Data cleared" });
+      return false; // Synchronous response
+
+    case "fetchStockDataBackground":
+      console.log("🎯 Background script received API request for:", request.ticker);
+      console.log("📊 Starting background API fetch process...");
+      
+      // Handle async operation properly
+      fetchStockDataInBackground(request.ticker, request.period)
+        .then(stockData => {
+          console.log("✅ Background script API call successful! Sending response:", stockData);
+          console.log(`🚀 Background script successfully fetched ${request.ticker} data!`);
+          sendResponse({ success: true, data: stockData });
+        })
+        .catch(error => {
+          console.error("❌ Background API fetch failed:", error);
+          console.error("🔍 Background script error details:", {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          });
+          console.log("📤 Sending error response to content script...");
+          sendResponse({ 
+            success: false, 
+            error: error.message || "Unknown error in background script",
+            errorType: error.name,
+            timestamp: new Date().toISOString()
+          });
+        });
+      
+      console.log("⏳ Background script will respond asynchronously...");
+      return true; // Will respond asynchronously
+
+    case "analyzeContent":
+      const { prompt, url, webContent } = request;
+
+      try {
+        const result = await new Promise(resolve => {
+          chrome.storage.sync.get(['geminiApiKey'], resolve);
+        });
+        const GEMINI_API_KEY = result.geminiApiKey;
+
+        if (!GEMINI_API_KEY) {
+          console.error("Gemini API Key not set. Please configure it in the extension options.");
+          sendResponse({ success: false, error: "Gemini API Key not set." });
+          return true;
+        }
+
+        let fullPrompt = prompt;
+        let fetchedWebContent = '';
+
+        if (url) {
+          try {
+            // Fetch content from the provided URL
+            const webResponse = await fetch(url);
+            if (!webResponse.ok) {
+              throw new Error(`Failed to fetch content from ${url}: ${webResponse.statusText}`);
+            }
+            fetchedWebContent = await webResponse.text();
+            console.log(`Fetched content from ${url}. Length: ${fetchedWebContent.length}`);
+            fullPrompt += `\n\nPlease analyze the content of the following URL: ${url}`;
+            fullPrompt += `\n\nUsing the following webpage content, please analyze the cash flow growth over time, revenues, and EBITDA. Webpage Content: ${fetchedWebContent}`;
+          } catch (fetchError) {
+            console.error("Error fetching web content in background.js:", fetchError);
+            fullPrompt += `\n\nCould not fetch content from ${url}. Please analyze based on general knowledge and the prompt:`;
+          }
+        } else if (webContent) {
+          // This branch is for if webContent was still sent directly (e.g., from content script)
+          fullPrompt += `\n\nUsing the following webpage content, please analyze the cash flow growth over time, revenues, and EBITDA. Webpage Content: ${webContent}`;
+        }
+
+        const geminiResponse = await retry(async () => {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{ text: fullPrompt }]
+              }]
+            })
+          });
+          
+          const data = await response.json();
+          if (data.error) {
+            throw new Error(data.error.message || 'Gemini API error');
+          }
+          return data;
+        });
+
+        console.log("Gemini API Final Successful Response:", geminiResponse);
+        if (geminiResponse.candidates && geminiResponse.candidates.length > 0) {
+          sendResponse({ success: true, response: geminiResponse.candidates[0].content.parts[0].text });
+        } else {
+          sendResponse({ success: false, error: "No response from Gemini API." });
+        }
+      } catch (error) {
+        console.error("Error calling Gemini API (after retries):", error);
+        sendResponse({ success: false, error: error.message });
+      }
+
+      return true; // Indicates that sendResponse will be called asynchronously
+
+    default:
+      console.log("Background script: Unknown message action:", request.action);
+      sendResponse({ success: false, error: "Unknown action: " + request.action });
+      return false;
   }
-  
-  // Handle other message types
-  console.log("Background script: Unknown message action:", request.action);
-  sendResponse({ success: false, error: "Unknown action: " + request.action });
-  return false;
 });
 
 // Helper function to get appropriate interval for period
@@ -171,6 +240,21 @@ function getIntervalForPeriod(period) {
     '1y': '1wk'    // 1 year: weekly intervals
   };
   return intervalMap[period] || '1d';
+}
+
+async function getTickerSuggestions(query) {
+    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${query}`;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            return [];
+        }
+        const data = await response.json();
+        return data.quotes.slice(0, 3).map(q => ({ symbol: q.symbol, name: q.shortname }));
+    } catch (error) {
+        console.error("Failed to fetch ticker suggestions:", error);
+        return [];
+    }
 }
 
 // Fetch stock data in background script (bypasses CSP)
@@ -266,79 +350,11 @@ async function fetchStockDataInBackground(ticker, period = '1d') {
     };
   } catch (error) {
     console.error('Background Yahoo v8 API failed:', error);
-    
-    // Method 2: Try Yahoo Finance v7 API
-    try {
-      const fallbackUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}`;
-      console.log("Background script trying Yahoo v7 API:", fallbackUrl);
-      
-      // Add timeout for fallback API too
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        console.log("Background script: v7 API call timeout, aborting...");
-        controller.abort();
-      }, 10000); // 10 second timeout
-      
-      const response = await fetch(fallbackUrl, {
-        method: 'GET',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-          'Accept': 'application/json',
-          'Accept-Language': 'en-US,en;q=0.9'
-        },
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      
-      console.log("Background Yahoo v7 API status:", response.status);
-      
-      if (!response.ok) {
-        throw new Error(`Background Yahoo v7 API HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log("Background Yahoo v7 API data:", data);
-      const quote = data.quoteResponse.result[0];
-      
-      if (quote) {
-        const currentPrice = quote.regularMarketPrice;
-        const previousClose = quote.regularMarketPreviousClose;
-        const dayChange = quote.regularMarketChange;
-        const dayChangePercent = quote.regularMarketChangePercent;
-        
-        return {
-          symbol: ticker,
-          currentPrice: currentPrice,
-          previousClose: previousClose,
-          dayChange: dayChange,
-          dayChangePercent: dayChangePercent,
-          dayHigh: quote.regularMarketDayHigh,
-          dayLow: quote.regularMarketDayLow,
-          marketCap: quote.marketCap,
-          currency: quote.currency || 'USD',
-          chartData: null
-        };
-      }
-    } catch (fallbackError) {
-      console.error('Background Yahoo v7 API also failed:', fallbackError);
+    const suggestions = await getTickerSuggestions(ticker);
+    if (suggestions.length > 0) {
+        return { suggestions: suggestions };
     }
-    
-    // Return mock data as last resort
-    console.warn('Background script: All APIs failed, returning mock data');
-    return {
-      symbol: ticker,
-      currentPrice: 100.00,
-      previousClose: 98.50,
-      dayChange: 1.50,
-      dayChangePercent: 1.52,
-      dayHigh: 101.25,
-      dayLow: 97.80,
-      marketCap: null,
-      currency: 'USD',
-      chartData: null,
-      isMockData: true
-    };
+    throw error;
   }
 }
 
@@ -462,7 +478,13 @@ async function ensureContentScriptInjected(tabId, frameId = undefined) {
 // Extract ticker symbol from text
 function extractTicker(text) {
   // Clean the text
-  const cleanText = text.trim().replace(/[^\w\s]/g, '').toUpperCase();
+  const cleanText = text.trim().toUpperCase();
+  
+  // Allow for tickers with suffixes like .TO
+  const tickerMatch = cleanText.match(/\b([A-Z]{1,6}(\.[A-Z]{2})?)\b/);
+  if (tickerMatch) {
+    return tickerMatch[0];
+  }
   
   // Common ticker patterns
   const tickerPatterns = [
@@ -684,3 +706,103 @@ self.checkPermissions = async function() {
     return null;
   }
 };
+
+// Helper function for exponential backoff retry
+async function retry(fn, retries = 3, delay = 1000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === retries - 1) throw error; // Last attempt, re-throw
+      
+      // Check for specific Gemini quota error and extract retry-after time
+      if (error.message && error.message.includes('RESOURCE_EXHAUSTED')) {
+        const retryAfterMatch = error.message.match(/retry in (\d+\.?\d*)s/);
+        if (retryAfterMatch && retryAfterMatch[1]) {
+          const suggestedDelay = parseFloat(retryAfterMatch[1]) * 1000; // Convert to milliseconds
+          delay = Math.max(delay, suggestedDelay + 500); // Use suggested delay, plus a buffer
+          console.warn(`Gemini quota exceeded. Retrying after ${delay / 1000} seconds...`);
+        } else {
+          console.warn(`Gemini quota exceeded. Retrying after ${delay / 1000} seconds (default)...`);
+        }
+      } else {
+        console.warn(`API call failed, retrying after ${delay / 1000} seconds...`, error.message);
+      }
+      await new Promise(res => setTimeout(res, delay));
+      delay *= 2; // Exponential backoff
+    }
+  }
+}
+
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+  if (request.action === "analyzeContent") {
+    const { prompt, url, webContent } = request;
+
+    chrome.storage.sync.get(['geminiApiKey'], async function(result) {
+      const GEMINI_API_KEY = result.geminiApiKey;
+
+      if (!GEMINI_API_KEY) {
+        console.error("Gemini API Key not set. Please configure it in the extension options.");
+        sendResponse({ success: false, error: "Gemini API Key not set." });
+        return;
+      }
+
+      let fullPrompt = prompt;
+      let fetchedWebContent = '';
+
+      if (url) {
+        try {
+          // Fetch content from the provided URL
+          const webResponse = await fetch(url);
+          if (!webResponse.ok) {
+            throw new Error(`Failed to fetch content from ${url}: ${webResponse.statusText}`);
+          }
+          fetchedWebContent = await webResponse.text();
+          console.log(`Fetched content from ${url}. Length: ${fetchedWebContent.length}`);
+          fullPrompt += `\n\nPlease analyze the content of the following URL: ${url}`;
+          fullPrompt += `\n\nUsing the following webpage content, please analyze the cash flow growth over time, revenues, and EBITDA. Webpage Content: ${fetchedWebContent}`;
+        } catch (fetchError) {
+          console.error("Error fetching web content in background.js:", fetchError);
+          fullPrompt += `\n\nCould not fetch content from ${url}. Please analyze based on general knowledge and the prompt:`;
+        }
+      } else if (webContent) {
+        // This branch is for if webContent was still sent directly (e.g., from content script)
+        fullPrompt += `\n\nUsing the following webpage content, please analyze the cash flow growth over time, revenues, and EBITDA. Webpage Content: ${webContent}`;
+      }
+
+      try {
+        const geminiResponse = await retry(async () => {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{ text: fullPrompt }]
+              }]
+            })
+          });
+          
+          const data = await response.json();
+          if (data.error) {
+            throw new Error(data.error.message || 'Gemini API error');
+          }
+          return data;
+        });
+
+        console.log("Gemini API Response:", geminiResponse);
+        if (geminiResponse.candidates && geminiResponse.candidates.length > 0) {
+          sendResponse({ success: true, response: geminiResponse.candidates[0].content.parts[0].text });
+        } else {
+          sendResponse({ success: false, error: "No response from Gemini API." });
+        }
+      } catch (error) {
+        console.error("Error calling Gemini API (after retries):", error);
+        sendResponse({ success: false, error: error.message });
+      }
+    });
+
+    return true; // Indicates that sendResponse will be called asynchronously
+  }
+});

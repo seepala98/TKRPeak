@@ -319,6 +319,73 @@
             width: 100%;
             height: auto;
         }
+
+        /* Gemini AI Analysis Styles */
+        .gemini-analysis {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 20px;
+            backdrop-filter: blur(8px);
+        }
+
+        .gemini-analysis h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #c4b5fd; /* A light purple to match the theme */
+        }
+
+        .chat-container {
+            height: 150px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 12px;
+        }
+
+        .chat-message {
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .user-message {
+            background: #4285f4;
+            color: white;
+            text-align: right;
+        }
+
+        .gemini-message {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .chat-input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input-group input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 13px;
+        }
+
+        .chat-input-group input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        #tickerSuggestions h3 {
+            color: #ffd700;
+        }
     </style>
 </head>
 <body>
@@ -379,6 +446,18 @@
                 <a href="#" id="googleLink" class="link-btn" target="_blank">🔍 Google Finance</a>
             </div>
         </div>
+
+        <!-- Gemini AI Analysis -->
+        <div id="geminiAiAnalysis" class="gemini-analysis hidden">
+            <h3>🤖 AI-Powered Analysis with Gemini</h3>
+            <div id="chatContainer" class="chat-container">
+                <!-- Chat messages will be appended here -->
+            </div>
+            <div class="chat-input-group">
+                <input type="text" id="chatInput" placeholder="Ask about cash flow, revenue, etc...">
+                <button id="sendChatBtn" class="action-btn">✉️ Send</button>
+            </div>
+        </div>
         
         <!-- Auto-Detection -->
         <div id="autoDetection" class="auto-detection hidden">
@@ -402,6 +481,14 @@
                 <button class="ticker-btn" data-ticker="GOOGL">GOOGL</button>
                 <button class="ticker-btn" data-ticker="TSLA">TSLA</button>
                 <button class="ticker-btn" data-ticker="NVDA">NVDA</button>
+            </div>
+        </div>
+
+        <!-- Ticker Suggestions -->
+        <div id="tickerSuggestions" class="manual-input hidden">
+            <h3>🤔 Did you mean?</h3>
+            <div id="suggestionButtons">
+                <!-- Suggestion buttons will be appended here -->
             </div>
         </div>
         

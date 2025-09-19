@@ -19,24 +19,24 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 function setupPopupCloseHandling() {
   // Clear stored data when popup is closed
-  window.addEventListener('beforeunload', () => {
-    console.log('🚪 Popup closing - clearing stored data');
-    try {
-      chrome.runtime.sendMessage({ action: 'clearStoredData' });
-    } catch (error) {
-      console.log('Could not clear data on popup close:', error);
-    }
-  });
+  // window.addEventListener('beforeunload', () => {
+  //   console.log('🚪 Popup closing - clearing stored data');
+  //   try {
+  //     chrome.runtime.sendMessage({ action: 'clearStoredData' });
+  //   } catch (error) {
+  //     console.log('Could not clear data on popup close:', error);
+  //   }
+  // });
   
   // Also listen for when popup loses focus (clicked outside)
-  window.addEventListener('blur', () => {
-    console.log('👆 Popup lost focus - clearing stored data');
-    try {
-      chrome.runtime.sendMessage({ action: 'clearStoredData' });
-    } catch (error) {
-      console.log('Could not clear data on blur:', error);
-    }
-  });
+  // window.addEventListener('blur', () => {
+  //   console.log('👆 Popup lost focus - clearing stored data');
+  //   try {
+  //     chrome.runtime.sendMessage({ action: 'clearStoredData' });
+  //   } catch (error) {
+  //     console.log('Could not clear data on blur:', error);
+  //   }
+  // });
 }
 
 async function initializePopup() {
@@ -130,6 +130,8 @@ function showManualInput() {
   document.getElementById('manualInput').classList.remove('hidden');
   document.getElementById('instructions').classList.remove('hidden');
   document.getElementById('stockData').classList.add('hidden');
+  document.getElementById('geminiAiAnalysis').classList.add('hidden');
+  document.getElementById('tickerSuggestions').classList.add('hidden');
 }
 
 function showStockData(stockData, ticker) {
@@ -137,6 +139,8 @@ function showStockData(stockData, ticker) {
   document.getElementById('manualInput').classList.add('hidden');
   document.getElementById('instructions').classList.add('hidden');
   document.getElementById('stockData').classList.remove('hidden');
+  document.getElementById('geminiAiAnalysis').classList.remove('hidden');
+  document.getElementById('tickerSuggestions').classList.add('hidden');
   
   // Store current data
   currentStockData = stockData;
@@ -147,6 +151,25 @@ function showStockData(stockData, ticker) {
   
   // Draw initial chart
   drawChart('1d');
+}
+
+function showTickerSuggestions(suggestions) {
+    const suggestionsDiv = document.getElementById('tickerSuggestions');
+    const suggestionButtons = document.getElementById('suggestionButtons');
+    suggestionButtons.innerHTML = ''; // Clear previous suggestions
+
+    if (suggestions && suggestions.length > 0) {
+        suggestions.forEach(suggestion => {
+            const btn = document.createElement('button');
+            btn.className = 'ticker-btn';
+            btn.textContent = `${suggestion.symbol} (${suggestion.name})`;
+            btn.onclick = () => fetchStockData(suggestion.symbol);
+            suggestionButtons.appendChild(btn);
+        });
+        suggestionsDiv.classList.remove('hidden');
+    } else {
+        suggestionsDiv.classList.add('hidden');
+    }
 }
 
 function populateStockData(data, ticker) {
@@ -223,8 +246,11 @@ async function fetchStockData(ticker, period = '1d') {
     });
     
     if (response && response.success && response.data) {
-      console.log('✅ Stock data received:', response.data);
-      showStockData(response.data, ticker);
+        if (response.data.suggestions) {
+            showTickerSuggestions(response.data.suggestions);
+        } else {
+            showStockData(response.data, ticker);
+        }
     } else {
       throw new Error(response.error || 'Failed to fetch stock data');
     }
@@ -241,6 +267,7 @@ function showLoadingState() {
   document.getElementById('manualInput').classList.add('hidden');
   document.getElementById('instructions').classList.add('hidden');
   document.getElementById('stockData').classList.add('hidden');
+  document.getElementById('tickerSuggestions').classList.add('hidden');
 }
 
 function showError(message) {
@@ -376,6 +403,68 @@ function drawChart(period) {
   console.log(`📊 Chart drawn for ${period}: ${prices.length} points, range $${minPrice.toFixed(2)}-$${maxPrice.toFixed(2)}`);
 }
 
+async function askGemini() {
+    const chatInput = document.getElementById('chatInput');
+    const question = chatInput.value.trim();
+    if (!question || !currentTicker) return;
+
+    const chatContainer = document.getElementById('chatContainer');
+
+    // Display user message
+    const userMessage = document.createElement('div');
+    userMessage.className = 'chat-message user-message';
+    userMessage.textContent = question;
+    chatContainer.appendChild(userMessage);
+    chatInput.value = '';
+
+    // Scroll to bottom
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    // Construct the Yahoo Finance financials URL based on the currentTicker
+    const financialUrl = `https://finance.yahoo.com/quote/${currentTicker}/financials`;
+
+    // Create a prompt for Gemini
+    const prompt = `You are a helpful financial assistant. Analyze the stock with the ticker symbol ${currentTicker}. The user has the following question: "${question}". Provide a concise and easy-to-understand response.`;
+
+    try {
+        const response = await chrome.runtime.sendMessage({
+            action: "analyzeContent",
+            prompt: prompt,
+            url: financialUrl,
+            // webContent is no longer sent from popup.js
+        });
+
+        console.log("Popup received response from background:", response);
+
+        if (response && response.success) {
+            // Display Gemini message
+            const geminiMessage = document.createElement('div');
+            geminiMessage.className = 'chat-message gemini-message';
+            geminiMessage.textContent = response.response;
+            chatContainer.appendChild(geminiMessage);
+        } else {
+            console.error("Error response from background:", response.error);
+            throw new Error(response.error || 'Failed to get response from Gemini');
+        }
+
+        // Scroll to bottom
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    } catch (error) {
+        console.error('Error asking Gemini:', error);
+        displayGeminiError('Sorry, I had trouble getting an analysis. Please try again.');
+    }
+}
+
+function displayGeminiError(message) {
+    const chatContainer = document.getElementById('chatContainer');
+    const errorMessage = document.createElement('div');
+    errorMessage.className = 'chat-message gemini-message';
+    errorMessage.textContent = message;
+    chatContainer.appendChild(errorMessage);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
 function setupEventListeners() {
   // Manual search
   document.getElementById('searchBtn').addEventListener('click', () => {
@@ -481,14 +570,22 @@ function setupEventListeners() {
       }
     });
   });
+
+  // Gemini chat
+  document.getElementById('sendChatBtn').addEventListener('click', askGemini);
+  document.getElementById('chatInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+          askGemini();
+      }
+  });
 }
 
 // Utility functions
 function extractTicker(text) {
   text = text.trim().toUpperCase();
   
-  // Direct ticker patterns (2-5 letters, all caps)
-  const tickerMatch = text.match(/\b[A-Z]{1,5}\b/);
+  // Allow for tickers with suffixes like .TO
+  const tickerMatch = text.match(/\b([A-Z]{1,6}(\.[A-Z]{2})?)\b/);
   if (tickerMatch) {
     return tickerMatch[0];
   }
