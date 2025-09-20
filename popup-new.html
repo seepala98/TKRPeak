@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Information</title>
+    <link rel="stylesheet" href="styles/popup.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 Stock Info</h1>
+            <p id="subtitle">Real-time stock data and charts</p>
+        </div>
+        
+        <!-- Loading State -->
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Fetching stock data...</p>
+        </div>
+        
+        <!-- Stock Data Display -->
+        <div id="stockData" class="stock-data hidden">
+            <!-- Stock Information -->
+            <div class="stock-info">
+                <div class="stock-symbol" id="stockSymbol">AAPL</div>
+                <div class="stock-price" id="stockPrice">$150.00</div>
+                <div class="stock-change" id="stockChange">+$2.50 (+1.69%)</div>
+                
+                <div class="stock-details">
+                    <div class="detail-row">
+                        <span class="label">Day High:</span>
+                        <span class="value">$152.00</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Day Low:</span>
+                        <span class="value">$148.50</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Market Cap:</span>
+                        <span class="value">$2.4T</span>
+                    </div>
+                </div>
+                
+                <!-- External Links -->
+                <div class="links">
+                    <a id="yahooLink" href="#" target="_blank" class="link-btn">📈 Yahoo</a>
+                    <a id="googleLink" href="#" target="_blank" class="link-btn">🔍 Google</a>
+                </div>
+            </div>
+            
+            <!-- Chart Section -->
+            <div class="chart-section">
+                <div class="chart-controls">
+                    <div class="period-buttons">
+                        <button class="period-btn active" data-period="1d">1D</button>
+                        <button class="period-btn" data-period="5d">5D</button>
+                        <button class="period-btn" data-period="1mo">1M</button>
+                        <button class="period-btn" data-period="6mo">6M</button>
+                        <button class="period-btn" data-period="1y">1Y</button>
+                    </div>
+                </div>
+                <canvas id="stockChart" width="340" height="150"></canvas>
+            </div>
+        </div>
+
+        <!-- Gemini AI Analysis -->
+        <div id="geminiAiAnalysis" class="gemini-analysis hidden">
+            <h3>🤖 AI-Powered Analysis with Gemini</h3>
+            <div id="chatContainer" class="chat-container">
+                <!-- Chat messages will be appended here -->
+            </div>
+            <div class="chat-input-group">
+                <input type="text" id="chatInput" placeholder="Ask about cash flow, revenue, etc...">
+                <button id="sendChatBtn" class="action-btn">✉️ Send</button>
+            </div>
+        </div>
+        
+        <!-- Auto-Detection -->
+        <div id="autoDetection" class="auto-detection hidden">
+            <h3>🎯 Stock Detected</h3>
+            <div class="detected-ticker" id="detectedTicker">AAPL</div>
+            <button id="autoBtn" class="action-btn">📊 Get Stock Info</button>
+        </div>
+        
+        <!-- Manual Input -->
+        <div id="manualInput" class="manual-input hidden">
+            <h3>🔍 Search Stock</h3>
+            <div class="input-group">
+                <input type="text" id="tickerInput" placeholder="Enter ticker (e.g., AAPL)" maxlength="6">
+                <button id="searchBtn" class="action-btn">🔍</button>
+            </div>
+            
+            <!-- Popular Stocks -->
+            <div class="popular-stocks">
+                <h4>Popular Stocks:</h4>
+                <div class="ticker-buttons">
+                    <button class="ticker-btn" data-ticker="AAPL">AAPL</button>
+                    <button class="ticker-btn" data-ticker="MSFT">MSFT</button>
+                    <button class="ticker-btn" data-ticker="GOOGL">GOOGL</button>
+                    <button class="ticker-btn" data-ticker="AMZN">AMZN</button>
+                    <button class="ticker-btn" data-ticker="TSLA">TSLA</button>
+                    <button class="ticker-btn" data-ticker="NVDA">NVDA</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ticker Suggestions -->
+        <div id="tickerSuggestions" class="manual-input hidden">
+            <h3>🤔 Did you mean?</h3>
+            <div id="suggestionButtons">
+                <!-- Suggestion buttons will be appended here -->
+            </div>
+        </div>
+        
+        <!-- Instructions -->
+        <div id="instructions" class="instructions">
+            <h3>🎯 How to Use</h3>
+            <p>
+                • Select stock text on any page<br>
+                • Right-click → "Get Stock Information" (auto-opens!)<br>
+                • Or type a ticker symbol above<br>
+                • Close popup to clear and start fresh
+            </p>
+            <div style="margin-top: 12px;">
+                <button id="clearDataBtn" class="secondary-btn" style="font-size: 11px; padding: 6px 12px;">🧹 Clear & Start Fresh</button>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="popup-new.js"></script>
+</body>
+</html>

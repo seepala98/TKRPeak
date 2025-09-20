@@ -41,6 +41,18 @@ A simple, elegant Chrome extension that provides instant stock information with 
 - **Color Coding**: Green for gains, red for losses
 - **Real-time Updates**: Charts update with fresh data
 
+## 🧩 Modular Architecture
+
+The extension is built with a clean, modular architecture for easy maintenance and debugging:
+
+- **📁 `/api/`** - API integration modules (Yahoo Finance, Gemini AI)
+- **📁 `/ui/`** - User interface components (charts, displays, events)
+- **📁 `/utils/`** - Utility functions (ticker parsing, data formatting)
+- **📁 `/handlers/`** - Event handlers (context menu, messages)
+- **📁 `/styles/`** - CSS styling (extracted from HTML)
+
+See `ARCHITECTURE.md` for detailed module documentation.
+
 ## 🛠 Installation
 
 ### Quick Install (Chrome Web Store)
