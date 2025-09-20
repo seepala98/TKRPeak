@@ -17,6 +17,8 @@
     "https://*.finance.yahoo.com/*",
     "https://*.googlefinance.com/*",
     "https://*.alphavantage.co/*",
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*",
     "https://*.investors.com/*",
     "https://research.investors.com/*",
     "https://*.marketwatch.com/*",
@@ -35,12 +37,11 @@
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
-      "css": ["popup.css"],
       "all_frames": true
     }
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background-compiled.js"
   },
   "action": {
     "default_popup": "popup.html",
@@ -59,7 +60,15 @@
   "options_page": "options.html",
   "web_accessible_resources": [
     {
-      "resources": ["popup.css", "popup.js", "chart.js"],
+      "resources": [
+        "api/*.js",
+        "ui/*.js", 
+        "utils/*.js",
+        "handlers/*.js",
+        "styles/*.css",
+        "popup.js",
+        "popup.css"
+      ],
       "matches": ["<all_urls>"]
     }
   ]

@@ -1,454 +1,88 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <style>
-        body {
-            width: 320px;
-            min-height: 240px;
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        
-        .container {
-            padding: 20px;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        
-        .logo {
-            font-size: 32px;
-            margin-bottom: 8px;
-        }
-        
-        .title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        
-        .subtitle {
-            font-size: 13px;
-            opacity: 0.8;
-        }
-        
-        /* Stock Data Styles */
-        .stock-data {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .stock-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .stock-symbol {
-            font-size: 24px;
-            font-weight: bold;
-        }
-        
-        .stock-price {
-            font-size: 28px;
-            font-weight: 800;
-            text-align: center;
-            margin-bottom: 8px;
-        }
-        
-        .stock-change {
-            font-size: 14px;
-            font-weight: 600;
-            text-align: center;
-            margin-bottom: 15px;
-        }
-        
-        .positive { color: #22c55e; }
-        .negative { color: #ef4444; }
-        
-        .stock-details {
-            font-size: 12px;
-        }
-        
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-        }
-        
-        .external-links {
-            display: flex;
-            gap: 8px;
-            margin-top: 15px;
-        }
-        
-        .link-btn {
-            flex: 1;
-            text-align: center;
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            border-radius: 6px;
-            color: white;
-            text-decoration: none;
-            font-size: 11px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-        
-        .link-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-        
-        /* Instructions when no stock data */
-        .instructions {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 20px;
-            backdrop-filter: blur(8px);
-            text-align: center;
-        }
-        
-        .instructions h3 {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        
-        .instructions p {
-            font-size: 13px;
-            line-height: 1.5;
-            opacity: 0.9;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 40px 20px;
-        }
-        
-        .spinner {
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid white;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .hidden { display: none; }
-        
-        /* Auto Detection Styles */
-        .auto-detection {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-            backdrop-filter: blur(8px);
-            text-align: center;
-        }
-        
-        .auto-detection h3 {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #ffd700;
-        }
-        
-        .auto-detection p {
-            font-size: 13px;
-            margin-bottom: 12px;
-        }
-        
-        /* Manual Input Styles */
-        .manual-input {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-            backdrop-filter: blur(8px);
-        }
-        
-        .manual-input h3 {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 12px;
-        }
-        
-        .input-group {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-        
-        .input-group input {
-            flex: 1;
-            padding: 8px 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 14px;
-        }
-        
-        .input-group input::placeholder {
-            color: rgba(255, 255, 255, 0.7);
-        }
-        
-        .popular-stocks h4 {
-            font-size: 12px;
-            margin-bottom: 8px;
-            opacity: 0.8;
-        }
-        
-        .ticker-btn {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
-            margin: 2px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .ticker-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-        
-        /* Button Styles */
-        .action-btn {
-            background: #4285f4;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin: 4px;
-        }
-        
-        .action-btn:hover {
-            background: #3367d6;
-        }
-        
-        .secondary-btn {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin: 4px;
-        }
-        
-        .secondary-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-        
-        /* Chart Styles */
-        .chart-controls {
-            margin: 15px 0;
-        }
-        
-        .chart-controls h4 {
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        
-        .period-buttons {
-            display: flex;
-            gap: 4px;
-            margin-bottom: 10px;
-        }
-        
-        .period-btn {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 6px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .period-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-        
-        .period-btn.active {
-            background: #4285f4;
-            border-color: #4285f4;
-        }
-        
-        .chart-container {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 10px;
-            margin-top: 8px;
-        }
-        
-        .chart-container canvas {
-            width: 100%;
-            height: auto;
-        }
-
-        /* Gemini AI Analysis Styles */
-        .gemini-analysis {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            padding: 16px;
-            margin-top: 20px;
-            backdrop-filter: blur(8px);
-        }
-
-        .gemini-analysis h3 {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: #c4b5fd; /* A light purple to match the theme */
-        }
-
-        .chat-container {
-            height: 150px;
-            overflow-y: auto;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 12px;
-        }
-
-        .chat-message {
-            margin-bottom: 8px;
-            padding: 8px;
-            border-radius: 6px;
-            font-size: 13px;
-            line-height: 1.4;
-        }
-
-        .user-message {
-            background: #4285f4;
-            color: white;
-            text-align: right;
-        }
-
-        .gemini-message {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-        }
-
-        .chat-input-group {
-            display: flex;
-            gap: 8px;
-        }
-
-        .chat-input-group input {
-            flex: 1;
-            padding: 8px 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 13px;
-        }
-
-        .chat-input-group input::placeholder {
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        #tickerSuggestions h3 {
-            color: #ffd700;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Information</title>
+    <link rel="stylesheet" href="styles/popup.css">
 </head>
 <body>
     <div class="container">
+        <!-- Header -->
         <div class="header">
-            <div class="logo">📊</div>
-            <div class="title">Stock Information</div>
-            <div class="subtitle" id="subtitle">Instant stock data on any webpage</div>
+            <h1>📊 Stock Info</h1>
+            <p id="subtitle">Real-time stock data and charts</p>
         </div>
         
-        <!-- Loading State -->
-        <div id="loading" class="loading hidden">
-            <div class="spinner"></div>
-            <p>Loading stock data...</p>
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-btn active" data-tab="basic">📈 Basic Info</button>
+            <button class="tab-btn" data-tab="advanced">📊 Advanced</button>
+            <button class="tab-btn" data-tab="quarterly">📈 Quarterly Trends</button>
         </div>
         
-        <!-- Stock Data Display -->
-        <div id="stockData" class="stock-data hidden">
-            <div class="stock-header">
-                <div class="stock-symbol" id="stockSymbol">-</div>
+        <!-- Clear Button - Always Visible -->
+        <div style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <button id="clearDataBtn" class="secondary-btn" style="font-size: 11px; padding: 6px 12px;">🧹 Clear & Start Fresh</button>
+        </div>
+        
+        <!-- Tab Content Container -->
+        <div class="tab-content">
+            <!-- Basic Info Tab -->
+            <div id="basic-tab" class="tab-panel active">
+                <!-- Loading State -->
+                <div id="loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <p>Fetching stock data...</p>
+                </div>
+                
+                <!-- Stock Data Display -->
+                <div id="stockData" class="stock-data hidden">
+            <!-- Stock Information -->
+            <div class="stock-info">
+                <div class="stock-symbol" id="stockSymbol">AAPL</div>
+                <div class="stock-price" id="stockPrice">$150.00</div>
+                <div class="stock-change" id="stockChange">+$2.50 (+1.69%)</div>
+                
+                <div class="stock-details">
+                    <div class="detail-row">
+                        <span class="label">Day High:</span>
+                        <span class="value">$152.00</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Day Low:</span>
+                        <span class="value">$148.50</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Market Cap:</span>
+                        <span class="value">$2.4T</span>
+                    </div>
+                </div>
+                
+                <!-- External Links -->
+                <div class="links">
+                    <a id="yahooLink" href="#" target="_blank" class="link-btn">📈 Yahoo</a>
+                    <a id="googleLink" href="#" target="_blank" class="link-btn">🔍 Google</a>
+                </div>
             </div>
             
-            <div class="stock-price" id="stockPrice">-</div>
-            <div class="stock-change" id="stockChange">-</div>
-            
-            <div class="stock-details">
-                <div class="detail-row">
-                    <span class="label">Day High:</span>
-                    <span class="value" id="dayHigh">-</span>
+            <!-- Chart Section -->
+            <div class="chart-section">
+                <div class="chart-controls">
+                    <div class="period-buttons">
+                        <button class="period-btn active" data-period="1d">1D</button>
+                        <button class="period-btn" data-period="5d">5D</button>
+                        <button class="period-btn" data-period="1mo">1M</button>
+                        <button class="period-btn" data-period="6mo">6M</button>
+                        <button class="period-btn" data-period="1y">1Y</button>
+                    </div>
                 </div>
-                <div class="detail-row">
-                    <span class="label">Day Low:</span>
-                    <span class="value" id="dayLow">-</span>
-                </div>
-                <div class="detail-row">
-                    <span class="label">Market Cap:</span>
-                    <span class="value" id="marketCap">-</span>
-                </div>
-            </div>
-            
-            <!-- Chart Time Period Selector -->
-            <div class="chart-controls">
-                <h4>📊 Chart Period</h4>
-                <div class="period-buttons">
-                    <button class="period-btn active" data-period="1d">1D</button>
-                    <button class="period-btn" data-period="5d">5D</button>
-                    <button class="period-btn" data-period="1mo">1M</button>
-                    <button class="period-btn" data-period="6mo">6M</button>
-                    <button class="period-btn" data-period="1y">1Y</button>
-                </div>
-                <div id="chartContainer" class="chart-container">
-                    <canvas id="stockChart" width="280" height="150"></canvas>
-                </div>
-            </div>
-            
-            <div class="external-links">
-                <a href="#" id="yahooLink" class="link-btn" target="_blank">📈 Yahoo Finance</a>
-                <a href="#" id="googleLink" class="link-btn" target="_blank">🔍 Google Finance</a>
+                <canvas id="stockChart" width="340" height="150"></canvas>
             </div>
         </div>
 
-        <!-- Gemini AI Analysis -->
-        <div id="geminiAiAnalysis" class="gemini-analysis hidden">
+        <!-- Gemini AI Analysis - COMMENTED OUT FOR NOW -->
+        <!-- <div id="geminiAiAnalysis" class="gemini-analysis hidden">
             <h3>🤖 AI-Powered Analysis with Gemini</h3>
             <div id="chatContainer" class="chat-container">
                 <!-- Chat messages will be appended here -->
@@ -457,30 +91,34 @@
                 <input type="text" id="chatInput" placeholder="Ask about cash flow, revenue, etc...">
                 <button id="sendChatBtn" class="action-btn">✉️ Send</button>
             </div>
-        </div>
+        </div> -->
         
         <!-- Auto-Detection -->
         <div id="autoDetection" class="auto-detection hidden">
-            <h3>📍 Text Selected</h3>
-            <p>Found: <strong id="selectedText">-</strong></p>
-            <button id="useSelectedBtn" class="action-btn">📊 Get Stock Info</button>
-            <button id="ignoreSelectedBtn" class="secondary-btn">❌ Ignore</button>
+            <h3>🎯 Stock Detected</h3>
+            <div class="detected-ticker" id="detectedTicker">AAPL</div>
+            <button id="autoBtn" class="action-btn">📊 Get Stock Info</button>
         </div>
         
         <!-- Manual Input -->
-        <div id="manualInput" class="manual-input">
-            <h3>📈 Enter Stock Symbol</h3>
+        <div id="manualInput" class="manual-input hidden">
+            <h3>🔍 Search Stock</h3>
             <div class="input-group">
-                <input type="text" id="tickerInput" placeholder="AAPL, TSLA, NVDA..." maxlength="10">
-                <button id="searchBtn" class="action-btn">🔍 Search</button>
+                <input type="text" id="tickerInput" placeholder="Enter ticker (e.g., AAPL)" maxlength="6">
+                <button id="searchBtn" class="action-btn">🔍</button>
             </div>
+            
+            <!-- Popular Stocks -->
             <div class="popular-stocks">
-                <h4>Popular:</h4>
-                <button class="ticker-btn" data-ticker="AAPL">AAPL</button>
-                <button class="ticker-btn" data-ticker="MSFT">MSFT</button>
-                <button class="ticker-btn" data-ticker="GOOGL">GOOGL</button>
-                <button class="ticker-btn" data-ticker="TSLA">TSLA</button>
-                <button class="ticker-btn" data-ticker="NVDA">NVDA</button>
+                <h4>Popular Stocks:</h4>
+                <div class="ticker-buttons">
+                    <button class="ticker-btn" data-ticker="AAPL">AAPL</button>
+                    <button class="ticker-btn" data-ticker="MSFT">MSFT</button>
+                    <button class="ticker-btn" data-ticker="GOOGL">GOOGL</button>
+                    <button class="ticker-btn" data-ticker="AMZN">AMZN</button>
+                    <button class="ticker-btn" data-ticker="TSLA">TSLA</button>
+                    <button class="ticker-btn" data-ticker="NVDA">NVDA</button>
+                </div>
             </div>
         </div>
 
@@ -492,21 +130,270 @@
             </div>
         </div>
         
-        <!-- Instructions -->
-        <div id="instructions" class="instructions">
-            <h3>🎯 How to Use</h3>
-            <p>
-                • Select stock text on any page<br>
-                • Right-click → "Get Stock Information" (auto-opens!)<br>
-                • Or type a ticker symbol above<br>
-                • Close popup to clear and start fresh
-            </p>
-            <div style="margin-top: 12px;">
-                <button id="clearDataBtn" class="secondary-btn" style="font-size: 11px; padding: 6px 12px;">🧹 Clear & Start Fresh</button>
-            </div>
-        </div>
-    </div>
+                <!-- Instructions -->
+                <div id="instructions" class="instructions">
+                    <h3>🎯 How to Use</h3>
+                    <p>
+                        • Select stock text on any page<br>
+                        • Right-click → "Get Stock Information" (auto-opens!)<br>
+                        • Or type a ticker symbol above
+                    </p>
+                </div>
+            </div> <!-- End Basic Tab -->
+
+            <!-- Advanced Tab -->
+            <div id="advanced-tab" class="tab-panel hidden">
+                <!-- Advanced Loading State -->
+                <div id="advancedLoading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <p>Fetching financial data...</p>
+                </div>
+                
+                <!-- Financial Data Display -->
+                <div id="financialData" class="financial-data hidden">
+                    <!-- Company Overview -->
+                    <div class="financial-section">
+                        <h3>📋 Company Overview</h3>
+                        <div class="financial-grid">
+                            <div class="financial-item">
+                                <span class="financial-label">Shares Outstanding:</span>
+                                <span class="financial-value" id="sharesOutstanding">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">Market Cap:</span>
+                                <span class="financial-value" id="marketCapAdvanced">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">Enterprise Value:</span>
+                                <span class="financial-value" id="enterpriseValue">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">YTD Return:</span>
+                                <span class="financial-value" id="ytdReturn">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Financial Performance -->
+                    <div class="financial-section">
+                        <h3>💰 Financial Performance (TTM)</h3>
+                        <div class="financial-grid">
+                            <div class="financial-item">
+                                <span class="financial-label">Revenue:</span>
+                                <span class="financial-value" id="totalRevenue">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">EBITDA:</span>
+                                <span class="financial-value" id="ebitda">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">Net Income:</span>
+                                <span class="financial-value" id="netIncome">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">Free Cash Flow:</span>
+                                <span class="financial-value" id="freeCashFlow">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">EPS (TTM):</span>
+                                <span class="financial-value" id="eps">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">Operating Expenses:</span>
+                                <span class="financial-value" id="operatingExpenses">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Balance Sheet -->
+                    <div class="financial-section">
+                        <h3>🏦 Balance Sheet</h3>
+                        <div class="financial-grid">
+                            <div class="financial-item">
+                                <span class="financial-label">Total Cash:</span>
+                                <span class="financial-value" id="totalCash">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">Total Debt:</span>
+                                <span class="financial-value" id="totalDebt">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">Net Debt:</span>
+                                <span class="financial-value" id="netDebt">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">Book Value:</span>
+                                <span class="financial-value" id="bookValue">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Valuation Ratios -->
+                    <div class="financial-section">
+                        <h3>📊 Valuation Ratios</h3>
+                        <div class="financial-grid">
+                            <div class="financial-item">
+                                <span class="financial-label">P/E Ratio:</span>
+                                <span class="financial-value" id="peRatio">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">P/B Ratio:</span>
+                                <span class="financial-value" id="pbRatio">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">EV/Revenue:</span>
+                                <span class="financial-value" id="evRevenue">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">EV/EBITDA:</span>
+                                <span class="financial-value" id="evEbitda">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">ROE:</span>
+                                <span class="financial-value" id="roe">-</span>
+                            </div>
+                            <div class="financial-item">
+                                <span class="financial-label">ROA:</span>
+                                <span class="financial-value" id="roa">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Advanced Instructions -->
+                <div id="advancedInstructions" class="instructions">
+                    <h3>📊 Advanced Financial Analysis</h3>
+                    <p>
+                        • Comprehensive financial metrics and ratios<br>
+                        • Trailing twelve months (TTM) performance<br>
+                        • Balance sheet and cash flow analysis<br>
+                        • Valuation ratios and profitability metrics
+                    </p>
+                </div>
+            </div> <!-- End Advanced Tab -->
+            
+            <!-- Quarterly Trends Tab -->
+            <div id="quarterly-tab" class="tab-panel hidden">
+                <!-- Loading State -->
+                <div id="quarterlyLoading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <p>Analyzing quarterly trends...</p>
+                </div>
+
+                <!-- Quarterly Controls -->
+                <div class="quarterly-controls">
+                    <button id="loadQuarterlyBtn" class="primary-btn">📈 Load Quarterly Analysis</button>
+                    <div class="control-info">
+                        <span>Historical quarterly data and growth trends</span>
+                    </div>
+                </div>
+
+                <!-- Quarterly Data Container -->
+                <div id="quarterlyContainer" class="quarterly-container hidden">
+                    
+                    <!-- AI Analysis Section -->
+                    <div class="ai-analysis-section">
+                        <h3>🤖 AI Financial Analysis</h3>
+                        <div id="aiAnalysisContainer" class="ai-analysis-container">
+                            <div id="aiAnalysisLoading" class="ai-analysis-loading hidden">
+                                <div class="ai-spinner"></div>
+                                <span>Analyzing quarterly data with AI...</span>
+                            </div>
+                            <div id="aiAnalysisContent" class="ai-analysis-content hidden">
+                                <!-- AI analysis will be populated here -->
+                            </div>
+                            <div id="aiAnalysisError" class="ai-analysis-error hidden">
+                                <p>AI analysis unavailable. Please ensure Gemini API key is configured.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Key Insights Dashboard -->
+                    <div class="quarterly-insights">
+                        <h3>💡 Key Financial Insights</h3>
+                        <div id="quarterlyInsights" class="insights-grid">
+                            <!-- Insights will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Visual Charts Section -->
+                    <div class="quarterly-charts-section">
+                        <h3>📈 Visual Trends Analysis</h3>
+                        
+                        <!-- Chart Controls -->
+                        <div class="chart-selector">
+                            <button class="chart-btn active" data-chart="revenue">📊 Revenue</button>
+                            <button class="chart-btn" data-chart="cashflow">💸 Cash Flow</button>
+                            <button class="chart-btn" data-chart="margins">📈 Margins</button>
+                        </div>
+                        
+                        <!-- Chart Canvas -->
+                        <div class="chart-container">
+                            <canvas id="quarterlyChart" width="420" height="200"></canvas>
+                            <div id="chartLegend" class="chart-legend">
+                                <!-- Legend will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Tables Section -->
+                    <div class="quarterly-tables">
+                        <h3>📋 Detailed Financial Tables</h3>
+                        
+                        <!-- Revenue & Profitability -->
+                        <div class="quarterly-table-section">
+                            <h4>💰 Revenue & Profitability Trends</h4>
+                            <div id="revenueTable" class="quarterly-table">
+                                <!-- Table will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Cash Flow Analysis -->
+                        <div class="quarterly-table-section">
+                            <h4>💸 Cash Flow Analysis</h4>
+                            <div id="cashFlowTable" class="quarterly-table">
+                                <!-- Table will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Balance Sheet Evolution -->
+                        <div class="quarterly-table-section">
+                            <h4>🏦 Balance Sheet Evolution</h4>
+                            <div id="balanceSheetTable" class="quarterly-table">
+                                <!-- Table will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Growth Metrics Summary -->
+                    <div class="growth-analysis">
+                        <h3>📊 Growth Metrics Summary</h3>
+                        <div id="growthMetrics" class="growth-metrics">
+                            <!-- Growth metrics will be populated here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quarterly Error State -->
+                <div id="quarterlyError" class="quarterly-error hidden">
+                    <p>⚠️ Unable to load quarterly data. This may be due to limited data availability for this ticker.</p>
+                </div>
+
+                <!-- Quarterly Instructions -->
+                <div id="quarterlyInstructions" class="instructions">
+                    <h3>📈 Quarterly Trends Analysis</h3>
+                    <p>
+                        • Historical quarterly financial performance<br>
+                        • Interactive charts showing revenue, cash flow, and margins<br>
+                        • Quarter-over-quarter and year-over-year growth analysis<br>
+                        • Automated financial insights and trend detection
+                    </p>
+                </div>
+            </div> <!-- End Quarterly Tab -->
+        </div> <!-- End Tab Content -->
+    </div> <!-- End Container -->
     
-    <script src="popup.js"></script>
+    <script src="popup-tabbed.js"></script>
 </body>
 </html>
