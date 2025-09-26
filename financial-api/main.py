@@ -36,6 +36,10 @@ CACHE = {}
 CACHE_TTL = 300  # 5 minutes cache TTL
 CACHE_MAX_SIZE = 1000  # Maximum number of cached items
 
+# Gemini API specific rate limiting
+GEMINI_LAST_CALL = {}
+GEMINI_MIN_INTERVAL = 1.0  # Minimum seconds between Gemini API calls per key
+
 def get_cache_key(symbol, operation):
     """Generate cache key for a symbol and operation"""
     return f"{symbol.upper()}:{operation}"
@@ -1106,7 +1110,7 @@ async def perform_agentic_analysis(request: AgenticAnalysisRequest):
         ]
         
         # Create initial analysis prompt for Gemini
-        initial_prompt = f"""You are a financial analyst AI with access to specialized financial analysis tools. You MUST use these tools to perform comprehensive analysis.
+        initial_prompt = f"""You are a DECISIVE financial analyst AI with access to specialized financial analysis tools. Your goal is to provide CLEAR, ACTIONABLE investment recommendations.
 
 IMPORTANT: You have access to 7 financial analysis tools. You MUST call these tools to gather data before making any conclusions.
 
@@ -1121,9 +1125,16 @@ After getting initial data from these tools, you may call additional tools based
 - detect_financial_anomalies: If you spot concerning patterns
 - get_analyst_consensus: For professional analyst opinions
 
+FINAL ANALYSIS REQUIREMENTS:
+- Be DECISIVE in your recommendation - avoid wishy-washy language
+- Choose ONE clear recommendation: STRONG BUY, BUY, HOLD, SELL, or STRONG SELL
+- Provide specific reasoning for your recommendation
+- Consider: Growth prospects, financial health, valuation, competitive position
+- End your analysis with: "RECOMMENDATION: [YOUR_CHOICE]" for clarity
+
 DO NOT provide any analysis or recommendations until you have called tools and received actual data.
 
-Your task: Analyze {request.ticker} stock. START NOW by calling fetch_quarterly_data and assess_financial_health."""
+Your task: Analyze {request.ticker} stock thoroughly and provide a DECISIVE investment recommendation. START NOW by calling fetch_quarterly_data and assess_financial_health."""
 
         # Call Gemini with function calling capability
         analysis_result = await call_gemini_with_function_calling(
@@ -1146,6 +1157,62 @@ Your task: Analyze {request.ticker} stock. START NOW by calling fetch_quarterly_
     except Exception as e:
         logger.error(f"Error in agentic analysis for {request.ticker}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Agentic analysis failed: {str(e)}")
+
+async def call_gemini_with_retry(request_data: Dict, api_key: str, iteration: int, max_retries: int = 3):
+    """
+    Call Gemini API with exponential backoff retry logic for rate limits
+    """
+    # Respect rate limiting - ensure minimum interval between calls
+    api_key_hash = api_key[:10]  # Use first 10 chars as identifier
+    current_time = time.time()
+    
+    if api_key_hash in GEMINI_LAST_CALL:
+        time_since_last = current_time - GEMINI_LAST_CALL[api_key_hash]
+        if time_since_last < GEMINI_MIN_INTERVAL:
+            sleep_time = GEMINI_MIN_INTERVAL - time_since_last
+            logger.info(f"Rate limiting: waiting {sleep_time:.1f}s before Gemini API call")
+            await asyncio.sleep(sleep_time)
+    
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
+                    json=request_data,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 429:
+                    # Rate limited - implement exponential backoff
+                    wait_time = (2 ** attempt) + random.uniform(1, 3)  # 2^attempt + 1-3 random seconds
+                    logger.warning(f"Rate limited (429) on iteration {iteration}, attempt {attempt + 1}. Waiting {wait_time:.1f}s...")
+                    await asyncio.sleep(wait_time)
+                    continue
+                
+                if not response.is_success:
+                    if attempt == max_retries - 1:  # Last attempt
+                        raise HTTPException(status_code=response.status_code, detail=f"Gemini API error: {response.text}")
+                    else:
+                        logger.warning(f"Gemini API error {response.status_code} on attempt {attempt + 1}, retrying...")
+                        await asyncio.sleep(1)
+                        continue
+                
+                # Update last successful call time
+                GEMINI_LAST_CALL[api_key_hash] = time.time()
+                return response.json()
+                
+        except httpx.TimeoutException:
+            if attempt == max_retries - 1:
+                raise HTTPException(status_code=408, detail="Gemini API timeout")
+            logger.warning(f"Timeout on attempt {attempt + 1}, retrying...")
+            await asyncio.sleep(2)
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise HTTPException(status_code=500, detail=f"Gemini API call failed: {str(e)}")
+            logger.warning(f"Error on attempt {attempt + 1}: {str(e)}, retrying...")
+            await asyncio.sleep(1)
+    
+    raise HTTPException(status_code=500, detail="Max retries exceeded for Gemini API")
 
 async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict], tools: FinancialAnalysisTools, api_key: str, ticker: str):
     """
@@ -1185,18 +1252,8 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
             logger.info(f"Tools available: {[tool['name'] for tool in tool_schemas]}")
             logger.info(f"Conversation history length: {len(conversation_history)}")
             
-            # Call Gemini API
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key={api_key}",
-                    json=request_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if not response.is_success:
-                    raise HTTPException(status_code=response.status_code, detail=f"Gemini API error: {response.text}")
-                
-                gemini_response = response.json()
+            # Call Gemini API with retry logic for rate limits
+            gemini_response = await call_gemini_with_retry(request_data, api_key, iteration + 1)
             
             if not gemini_response.get("candidates"):
                 logger.warning(f"No candidates in Gemini response for {ticker}")
@@ -1292,6 +1349,10 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
                 }
             
             iteration += 1
+            
+            # Add small delay between iterations to respect rate limits
+            if iteration < max_iterations:
+                await asyncio.sleep(0.5)  # 500ms delay between iterations
         
         # If we've reached max iterations, return what we have
         return {
@@ -1369,7 +1430,7 @@ async def test_function_calling(ticker: str, gemini_api_key: str):
         
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key={gemini_api_key}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}",
                 json=request_data,
                 headers={"Content-Type": "application/json"}
             )
@@ -1442,6 +1503,77 @@ async def test_tools_directly(ticker: str):
             }
         except Exception as e:
             results["assess_financial_health"] = {"error": str(e)}
+        
+        # Test compare_with_peers (key tool that was failing)
+        try:
+            result = await tools.compare_with_peers(
+                ticker, 
+                peers=["WMT", "BABA"], 
+                metrics=["revenue", "net_income", "ROE", "Current_Ratio", "Debt_to_Equity"]
+            )
+            
+            if result.get("success", False):
+                comparison_data = result.get("comparison_data", {})
+                # Count how many metrics have non-null values
+                metrics_with_data = 0
+                total_metrics = 0
+                for company_data in comparison_data.values():
+                    for metric, value in company_data.items():
+                        if metric != "ticker":
+                            total_metrics += 1
+                            if value is not None:
+                                metrics_with_data += 1
+                
+                results["compare_with_peers"] = {
+                    "success": True,
+                    "companies_compared": len(comparison_data),
+                    "metrics_with_data": metrics_with_data,
+                    "total_metrics": total_metrics,
+                    "data_completeness": f"{metrics_with_data}/{total_metrics}",
+                    "comparison_data": comparison_data  # Include actual data for verification
+                }
+            else:
+                results["compare_with_peers"] = {
+                    "success": False,
+                    "error": result.get("error", "Unknown error")
+                }
+        except Exception as e:
+            results["compare_with_peers"] = {"error": str(e)}
+        
+        # Test get_analyst_consensus (failing tool)
+        try:
+            result = await tools.get_analyst_consensus(ticker, include_history=True)
+            
+            if result.get("success", False):
+                consensus = result.get("consensus", {})
+                analyst_targets = consensus.get("analyst_targets", {})
+                recommendations = consensus.get("recommendations", {})
+                
+                # Convert any numpy objects to native Python types for JSON serialization
+                def clean_for_json(obj):
+                    if isinstance(obj, dict):
+                        return {k: clean_for_json(v) for k, v in obj.items()}
+                    elif hasattr(obj, 'item'):  # numpy scalar
+                        return obj.item()
+                    elif hasattr(obj, 'tolist'):  # numpy array
+                        return obj.tolist()
+                    else:
+                        return obj
+                
+                results["get_analyst_consensus"] = {
+                    "success": True,
+                    "has_price_targets": len(analyst_targets) > 0 if analyst_targets else False,
+                    "has_recommendations": len(recommendations) > 0 if recommendations else False,
+                    "price_targets": clean_for_json(analyst_targets),
+                    "recommendations": clean_for_json(recommendations)
+                }
+            else:
+                results["get_analyst_consensus"] = {
+                    "success": False,
+                    "error": result.get("error", "Unknown error")
+                }
+        except Exception as e:
+            results["get_analyst_consensus"] = {"error": str(e)}
         
         return {
             "success": True,

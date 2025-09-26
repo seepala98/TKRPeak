@@ -164,8 +164,8 @@ class FinancialAnalysisTools:
                 "earnings_estimates": {}
             }
             
-            # Process analyst price targets
-            if analyst_price_targets is not None and not analyst_price_targets.empty:
+            # Process analyst price targets (returns dict, not DataFrame)
+            if analyst_price_targets is not None and len(analyst_price_targets) > 0:
                 consensus_data["analyst_targets"] = {
                     "mean_target": analyst_price_targets.get('targetMeanPrice'),
                     "high_target": analyst_price_targets.get('targetHighPrice'),
@@ -528,27 +528,120 @@ class FinancialAnalysisTools:
         return benchmarks
     
     async def _get_company_metrics(self, ticker: str, metrics: List[str]) -> Dict[str, Any]:
-        """Get specific metrics for a company"""
+        """Get specific metrics for a company with comprehensive field mapping"""
         try:
             stock = yf.Ticker(ticker)
             info = stock.info
             
+            # Get financial statements for calculated ratios
+            balance_sheet = None
+            try:
+                balance_sheet = stock.balance_sheet
+            except:
+                pass
+            
             company_metrics = {"ticker": ticker}
+            
             for metric in metrics:
-                if metric.lower() == "market_cap":
-                    company_metrics[metric] = info.get("marketCap")
-                elif metric.lower() == "pe_ratio":
-                    company_metrics[metric] = info.get("trailingPE")
-                elif metric.lower() == "revenue":
-                    company_metrics[metric] = info.get("totalRevenue")
-                elif metric.lower() == "profit_margin":
-                    company_metrics[metric] = info.get("profitMargins")
+                metric_lower = metric.lower()
+                value = None
+                
+                # Revenue metrics
+                if metric_lower in ["revenue", "total_revenue"]:
+                    value = info.get("totalRevenue")
+                elif metric_lower in ["net_income", "net_earnings"]:
+                    value = info.get("netIncomeToCommon") or info.get("netIncome")
+                elif metric_lower == "ebitda":
+                    value = info.get("ebitda")
+                elif metric_lower in ["gross_profit", "gross_income"]:
+                    value = info.get("grossProfits")
+                
+                # Valuation metrics
+                elif metric_lower == "market_cap":
+                    value = info.get("marketCap")
+                elif metric_lower == "enterprise_value":
+                    value = info.get("enterpriseValue")
+                elif metric_lower in ["pe_ratio", "p/e", "pe"]:
+                    value = info.get("trailingPE") or info.get("forwardPE")
+                elif metric_lower in ["pb_ratio", "p/b", "pb"]:
+                    value = info.get("priceToBook")
+                elif metric_lower in ["ps_ratio", "p/s", "ps"]:
+                    value = info.get("priceToSalesTrailing12Months")
+                
+                # Profitability ratios
+                elif metric_lower == "roe":
+                    value = info.get("returnOnEquity")
+                    if value and value > 1:  # Convert percentage to decimal if needed
+                        value = value / 100
+                elif metric_lower == "roa":
+                    value = info.get("returnOnAssets")
+                    if value and value > 1:  # Convert percentage to decimal if needed
+                        value = value / 100
+                elif metric_lower in ["profit_margin", "net_margin"]:
+                    value = info.get("profitMargins")
+                elif metric_lower == "gross_margin":
+                    value = info.get("grossMargins")
+                elif metric_lower == "operating_margin":
+                    value = info.get("operatingMargins")
+                
+                # Liquidity ratios
+                elif metric_lower == "current_ratio":
+                    value = info.get("currentRatio")
+                elif metric_lower == "quick_ratio":
+                    value = info.get("quickRatio")
+                
+                # Leverage ratios
+                elif metric_lower in ["debt_to_equity", "debt/equity", "de_ratio"]:
+                    total_debt = info.get("totalDebt")
+                    total_equity = info.get("totalStockholderEquity")
+                    if total_debt is not None and total_equity is not None and total_equity != 0:
+                        value = total_debt / total_equity
+                    else:
+                        value = info.get("debtToEquity")
+                
+                # Cash flow metrics
+                elif metric_lower in ["operating_cash_flow", "ocf"]:
+                    value = info.get("operatingCashFlow")
+                elif metric_lower in ["free_cash_flow", "fcf"]:
+                    value = info.get("freeCashflow")
+                
+                # Balance sheet items
+                elif metric_lower == "total_cash":
+                    value = info.get("totalCash")
+                elif metric_lower == "total_debt":
+                    value = info.get("totalDebt")
+                elif metric_lower == "total_assets":
+                    # Try to get from balance sheet first
+                    if balance_sheet is not None and not balance_sheet.empty and 'Total Assets' in balance_sheet.index:
+                        value = balance_sheet.loc['Total Assets'].iloc[0]
+                    else:
+                        value = info.get("totalAssets")
+                elif metric_lower in ["book_value", "book_value_per_share"]:
+                    value = info.get("bookValue")
+                
+                # Growth metrics
+                elif metric_lower == "revenue_growth":
+                    value = info.get("revenueGrowth")
+                elif metric_lower == "earnings_growth":
+                    value = info.get("earningsGrowth")
+                
+                # Per-share metrics
+                elif metric_lower in ["eps", "earnings_per_share"]:
+                    value = info.get("trailingEps") or info.get("forwardEps")
+                elif metric_lower == "dividend_yield":
+                    value = info.get("dividendYield")
+                
+                # Fallback: try direct field name
                 else:
-                    company_metrics[metric] = info.get(metric)
+                    value = info.get(metric) or info.get(metric_lower)
+                
+                # Store the value
+                company_metrics[metric] = value
             
             return company_metrics
-        except:
-            return {"ticker": ticker, "error": "Data unavailable"}
+            
+        except Exception as e:
+            return {"ticker": ticker, "error": f"Data unavailable: {str(e)}"}
     
     def _calculate_peer_rankings(self, comparison_data: Dict[str, Any], metrics: List[str]) -> Dict[str, Any]:
         """Calculate peer rankings for metrics"""

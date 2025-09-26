@@ -1026,10 +1026,36 @@ async function performAgenticAnalysis(ticker, apiKey, quarterlyData) {
     console.log(`   Iterations: ${agenticResult.result.iterations || 1}`);
     console.log(`   Tool calls: ${agenticResult.result.tool_calls_made || 0}`);
     
-    // Extract recommendation from final analysis
+    // Extract recommendation from final analysis with enhanced pattern matching
     const finalAnalysis = agenticResult.result.final_analysis || '';
-    const recommendationMatch = finalAnalysis.match(/(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
-    const recommendation = recommendationMatch ? recommendationMatch[0].toUpperCase() : 'HOLD';
+    
+    // Try multiple extraction patterns
+    let recommendation = 'HOLD'; // Default fallback
+    
+    // Pattern 1: Direct recommendation format
+    let match = finalAnalysis.match(/RECOMMENDATION:\s*(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
+    if (match) {
+      recommendation = match[1].toUpperCase();
+    } else {
+      // Pattern 2: Standard recommendation keywords
+      match = finalAnalysis.match(/(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
+      if (match) {
+        recommendation = match[0].toUpperCase();
+      } else {
+        // Pattern 3: Contextual recommendations
+        const text = finalAnalysis.toLowerCase();
+        if (text.includes('strongly recommend buying') || text.includes('excellent investment') || text.includes('strong buy') || text.includes('compelling opportunity')) {
+          recommendation = 'STRONG BUY';
+        } else if (text.includes('recommend buying') || text.includes('good investment') || text.includes('attractive') || text.includes('undervalued')) {
+          recommendation = 'BUY';
+        } else if (text.includes('recommend selling') || text.includes('poor investment') || text.includes('overvalued') || text.includes('concerns')) {
+          recommendation = 'SELL';
+        } else if (text.includes('strongly avoid') || text.includes('significant risks') || text.includes('strong sell')) {
+          recommendation = 'STRONG SELL';
+        }
+        // If none match, keep HOLD as fallback
+      }
+    }
     
     return {
       analysis: finalAnalysis,
@@ -1129,7 +1155,7 @@ async function callGeminiAPI(prompt, apiKey) {
     try {
       console.log(`🤖 Calling Gemini API (attempt ${attempt + 1}/${maxRetries})`);
       
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1161,9 +1187,32 @@ async function callGeminiAPI(prompt, apiKey) {
 
       const fullText = data.candidates[0].content.parts[0].text;
       
-      // Extract recommendation from the response
-      const recommendationMatch = fullText.match(/(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
-      const recommendation = recommendationMatch ? recommendationMatch[0].toUpperCase() : 'HOLD';
+      // Extract recommendation from the response with enhanced pattern matching
+      let recommendation = 'HOLD'; // Default fallback
+      
+      // Pattern 1: Direct recommendation format  
+      let match = fullText.match(/RECOMMENDATION:\s*(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
+      if (match) {
+        recommendation = match[1].toUpperCase();
+      } else {
+        // Pattern 2: Standard recommendation keywords
+        match = fullText.match(/(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
+        if (match) {
+          recommendation = match[0].toUpperCase();
+        } else {
+          // Pattern 3: Contextual recommendations
+          const text = fullText.toLowerCase();
+          if (text.includes('strongly recommend buying') || text.includes('excellent investment') || text.includes('strong buy') || text.includes('compelling opportunity')) {
+            recommendation = 'STRONG BUY';
+          } else if (text.includes('recommend buying') || text.includes('good investment') || text.includes('attractive') || text.includes('undervalued')) {
+            recommendation = 'BUY';
+          } else if (text.includes('recommend selling') || text.includes('poor investment') || text.includes('overvalued') || text.includes('concerns')) {
+            recommendation = 'SELL';
+          } else if (text.includes('strongly avoid') || text.includes('significant risks') || text.includes('strong sell')) {
+            recommendation = 'STRONG SELL';
+          }
+        }
+      }
       
       // Clean up the analysis text
       const analysis = fullText.replace(/\*\*/g, '').trim();
