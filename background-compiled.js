@@ -357,26 +357,35 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           try {
             // Get Gemini API key from storage
             const storageResult = await new Promise(resolve => {
-              chrome.storage.sync.get(['geminiApiKey'], resolve);
+              chrome.storage.sync.get(['geminiApiKey', 'useAgenticAnalysis'], resolve);
             });
             
             if (!storageResult.geminiApiKey) {
               throw new Error("Gemini API Key not configured. Please set it in extension options.");
             }
 
-            console.log(`🔄 Starting AI analysis for ${request.ticker}...`);
+            console.log(`🔄 Starting ${storageResult.useAgenticAnalysis ? 'agentic' : 'static'} AI analysis for ${request.ticker}...`);
             
-            // Create comprehensive prompt for Gemini
-            const prompt = await createQuarterlyAnalysisPrompt(request.data, request.ticker);
+            let analysisResult;
             
-            const analysisResult = await callGeminiAPI(prompt, storageResult.geminiApiKey);
+            if (storageResult.useAgenticAnalysis) {
+              // Use new agentic AI analysis with function calling
+              analysisResult = await performAgenticAnalysis(request.ticker, storageResult.geminiApiKey, request.data);
+            } else {
+              // Use existing static analysis approach
+              const prompt = await createQuarterlyAnalysisPrompt(request.data, request.ticker);
+              analysisResult = await callGeminiAPI(prompt, storageResult.geminiApiKey);
+            }
             
             console.log(`✅ AI analysis successful for ${request.ticker}`);
             
             result = { 
               success: true, 
               analysis: analysisResult.analysis,
-              recommendation: analysisResult.recommendation
+              recommendation: analysisResult.recommendation,
+              isAgentic: storageResult.useAgenticAnalysis || false,
+              toolsUsed: analysisResult.tools_used || [],
+              iterations: analysisResult.iterations || 1
             };
             
           } catch (error) {
@@ -983,6 +992,72 @@ class YahooFinanceAdvancedAPI {
 }
 
 // ===== GEMINI AI INTEGRATION =====
+
+async function performAgenticAnalysis(ticker, apiKey, quarterlyData) {
+  try {
+    console.log(`🤖 Starting agentic AI analysis for ${ticker}`);
+    
+    // Call FastAPI agentic analysis endpoint
+    const response = await fetch('http://localhost:8000/agentic-analysis', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ticker: ticker,
+        analysis_type: 'comprehensive',
+        focus_areas: null,
+        gemini_api_key: apiKey
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`FastAPI agentic analysis failed: ${response.status} ${response.statusText}`);
+    }
+    
+    const agenticResult = await response.json();
+    
+    if (!agenticResult.success) {
+      throw new Error(agenticResult.error || 'Agentic analysis failed');
+    }
+    
+    console.log(`✅ Agentic AI analysis completed for ${ticker}:`);
+    console.log(`   Tools used: ${agenticResult.result.tools_used?.join(', ') || 'None'}`);
+    console.log(`   Iterations: ${agenticResult.result.iterations || 1}`);
+    console.log(`   Tool calls: ${agenticResult.result.tool_calls_made || 0}`);
+    
+    // Extract recommendation from final analysis
+    const finalAnalysis = agenticResult.result.final_analysis || '';
+    const recommendationMatch = finalAnalysis.match(/(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
+    const recommendation = recommendationMatch ? recommendationMatch[0].toUpperCase() : 'HOLD';
+    
+    return {
+      analysis: finalAnalysis,
+      recommendation: recommendation,
+      tools_used: agenticResult.result.tools_used || [],
+      iterations: agenticResult.result.iterations || 1,
+      tool_calls_made: agenticResult.result.tool_calls_made || 0,
+      tool_results: agenticResult.result.tool_results || {},
+      agentic: true
+    };
+    
+  } catch (error) {
+    console.error(`❌ Agentic AI analysis error for ${ticker}:`, error);
+    
+    // Fallback to static analysis if agentic fails
+    console.log(`🔄 Falling back to static analysis for ${ticker}`);
+    const prompt = await createQuarterlyAnalysisPrompt(quarterlyData, ticker);
+    const staticResult = await callGeminiAPI(prompt, apiKey);
+    
+    return {
+      ...staticResult,
+      fallback: true,
+      agentic: false,
+      fallback_reason: error.message
+    };
+  }
+}
+
 async function createQuarterlyAnalysisPrompt(data, ticker) {
   const { revenue_trends, cash_flow_trends, balance_sheet_trends } = data;
   

@@ -1396,7 +1396,14 @@ class QuarterlyChartsUI {
       });
 
       if (response && response.success) {
-        this.displayAIAnalysis(response.analysis, response.recommendation);
+        const metadata = {
+          isAgentic: response.isAgentic,
+          toolsUsed: response.toolsUsed,
+          iterations: response.iterations,
+          fallback: response.fallback,
+          fallback_reason: response.fallback_reason
+        };
+        this.displayAIAnalysis(response.analysis, response.recommendation, metadata);
       } else {
         throw new Error(response?.error || 'AI analysis failed');
       }
@@ -1447,7 +1454,7 @@ class QuarterlyChartsUI {
     document.getElementById('aiAnalysisError').classList.add('hidden');
   }
 
-  static displayAIAnalysis(analysis, recommendation) {
+  static displayAIAnalysis(analysis, recommendation, metadata = {}) {
     const container = document.getElementById('aiAnalysisContent');
     if (!container) return;
 
@@ -1466,7 +1473,28 @@ class QuarterlyChartsUI {
       }
     }
 
+    // Create agentic analysis badge if applicable
+    let agenticBadge = '';
+    if (metadata.isAgentic) {
+      const toolsList = metadata.toolsUsed?.length > 0 ? metadata.toolsUsed.join(', ') : 'None';
+      agenticBadge = `
+        <div class="agentic-badge">
+          🤖 Agentic AI Analysis 
+          <span class="agentic-details">
+            Tools Used: ${toolsList} | Iterations: ${metadata.iterations || 1}
+          </span>
+        </div>
+      `;
+    } else if (metadata.fallback) {
+      agenticBadge = `
+        <div class="fallback-badge">
+          ⚠️ Fallback Analysis (${metadata.fallback_reason || 'Agentic AI unavailable'})
+        </div>
+      `;
+    }
+
     container.innerHTML = `
+      ${agenticBadge}
       <div class="ai-analysis-text">${analysis || 'AI analysis completed successfully.'}</div>
       <div class="ai-recommendation ${recommendationClass}">
         ${recommendationIcon} AI Recommendation: ${recommendation || 'HOLD - Maintain current position'}

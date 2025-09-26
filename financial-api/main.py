@@ -18,6 +18,8 @@ import time
 import asyncio
 from functools import wraps
 import random
+import httpx
+from tools import FinancialAnalysisTools, TOOL_REGISTRY
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -974,6 +976,321 @@ def generate_quarterly_insights(trends_data):
         logger.error(f"Error generating insights: {e}")
     
     return insights
+
+# ===== AGENTIC AI ENDPOINTS =====
+
+class AgenticAnalysisRequest(BaseModel):
+    ticker: str
+    analysis_type: str = "comprehensive"  # comprehensive, quick, specific
+    focus_areas: Optional[List[str]] = None  # specific areas to focus on
+    gemini_api_key: str
+
+@app.post("/agentic-analysis")
+async def perform_agentic_analysis(request: AgenticAnalysisRequest):
+    """
+    Agentic AI Financial Analysis with Function Calling
+    AI dynamically decides what tools to use for comprehensive analysis
+    """
+    try:
+        logger.info(f"Starting agentic analysis for {request.ticker}")
+        
+        # Initialize the financial analysis tools
+        tools = FinancialAnalysisTools()
+        
+        # Define available tools for the AI
+        tool_schemas = [
+            {
+                "name": "fetch_quarterly_data",
+                "description": "Fetch quarterly financial data for specific periods and metrics",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "quarters": {"type": "integer", "minimum": 1, "maximum": 12},
+                        "metrics": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Specific metrics to fetch (revenue, net_income, free_cash_flow, etc.)"
+                        }
+                    },
+                    "required": ["ticker"]
+                }
+            },
+            {
+                "name": "calculate_financial_ratios",
+                "description": "Calculate specific financial ratios and compare to industry benchmarks",
+                "parameters": {
+                    "type": "object", 
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "ratios": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Ratios to calculate (P/E, ROE, Current_Ratio, Debt_to_Equity, etc.)"
+                        },
+                        "include_industry": {"type": "boolean"}
+                    },
+                    "required": ["ticker", "ratios"]
+                }
+            },
+            {
+                "name": "compare_with_peers",
+                "description": "Compare company metrics against industry competitors",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "peers": {
+                            "type": "array", 
+                            "items": {"type": "string"},
+                            "description": "Competitor ticker symbols"
+                        },
+                        "metrics": {
+                            "type": "array",
+                            "items": {"type": "string"}
+                        }
+                    },
+                    "required": ["ticker", "peers", "metrics"]
+                }
+            },
+            {
+                "name": "get_analyst_consensus",
+                "description": "Get analyst ratings, price targets, and recommendations",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "include_history": {"type": "boolean"}
+                    },
+                    "required": ["ticker"]
+                }
+            },
+            {
+                "name": "fetch_market_context",
+                "description": "Get broader market conditions and sector performance",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "include_sector": {"type": "boolean"},
+                        "timeframe": {"type": "string", "enum": ["1M", "3M", "6M", "1Y"]}
+                    },
+                    "required": ["ticker"]
+                }
+            },
+            {
+                "name": "detect_financial_anomalies", 
+                "description": "Identify unusual patterns or red flags in financial data",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "lookback_periods": {"type": "integer", "minimum": 4, "maximum": 20},
+                        "sensitivity": {"type": "string", "enum": ["low", "medium", "high"]}
+                    },
+                    "required": ["ticker"]
+                }
+            },
+            {
+                "name": "assess_financial_health",
+                "description": "Calculate comprehensive financial health score and assessment",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "include_scores": {"type": "boolean"}
+                    },
+                    "required": ["ticker"]
+                }
+            }
+        ]
+        
+        # Create initial analysis prompt for Gemini
+        initial_prompt = f"""You are an expert financial analyst with access to powerful financial analysis tools. 
+        
+Analyze {request.ticker} using a systematic approach:
+
+1. INITIAL ASSESSMENT: Start by getting basic quarterly data and financial health assessment
+2. DEEP DIVE: Based on initial findings, use specific tools to explore areas of interest
+3. COMPARATIVE ANALYSIS: Compare with peers if concerning trends are found
+4. MARKET CONTEXT: Consider broader market conditions
+5. ANOMALY DETECTION: Look for red flags or unusual patterns
+6. FINAL RECOMMENDATION: Provide investment recommendation with supporting evidence
+
+Use the available tools strategically to build a comprehensive analysis. Call tools in a logical sequence based on what you discover.
+
+Analysis Type: {request.analysis_type}
+Focus Areas: {request.focus_areas if request.focus_areas else 'All areas'}
+
+Begin with fetching quarterly data and financial health assessment for {request.ticker}."""
+
+        # Call Gemini with function calling capability
+        analysis_result = await call_gemini_with_function_calling(
+            initial_prompt, 
+            tool_schemas, 
+            tools,
+            request.gemini_api_key,
+            request.ticker
+        )
+        
+        logger.info(f"Agentic analysis completed for {request.ticker}")
+        
+        return {
+            "success": True,
+            "ticker": request.ticker,
+            "analysis_type": request.analysis_type,
+            "result": analysis_result
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in agentic analysis for {request.ticker}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Agentic analysis failed: {str(e)}")
+
+async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict], tools: FinancialAnalysisTools, api_key: str, ticker: str):
+    """
+    Call Gemini with function calling capability
+    AI can dynamically call tools based on its analysis needs
+    """
+    try:
+        max_iterations = 5  # Prevent infinite loops
+        iteration = 0
+        conversation_history = []
+        tool_results = {}
+        
+        # Initial conversation setup
+        conversation_history.append({
+            "role": "user",
+            "parts": [{"text": prompt}]
+        })
+        
+        while iteration < max_iterations:
+            logger.info(f"Agentic AI iteration {iteration + 1} for {ticker}")
+            
+            # Prepare Gemini request with function calling
+            request_data = {
+                "contents": conversation_history,
+                "tools": [{
+                    "function_declarations": tool_schemas
+                }],
+                "generationConfig": {
+                    "temperature": 0.3,  # Lower temperature for more focused analysis
+                    "topK": 40,
+                    "topP": 0.95,
+                    "maxOutputTokens": 2048
+                }
+            }
+            
+            # Call Gemini API
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key={api_key}",
+                    json=request_data,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if not response.is_success:
+                    raise HTTPException(status_code=response.status_code, detail=f"Gemini API error: {response.text}")
+                
+                gemini_response = response.json()
+            
+            if not gemini_response.get("candidates"):
+                break
+                
+            candidate = gemini_response["candidates"][0]
+            
+            # Check if AI wants to call a function
+            if "functionCall" in candidate.get("content", {}).get("parts", [{}])[0]:
+                function_call = candidate["content"]["parts"][0]["functionCall"]
+                function_name = function_call["name"]
+                function_args = function_call.get("args", {})
+                
+                logger.info(f"AI calling function: {function_name} with args: {function_args}")
+                
+                # Execute the function call
+                if function_name in TOOL_REGISTRY:
+                    try:
+                        # Ensure ticker is in the arguments
+                        if "ticker" not in function_args:
+                            function_args["ticker"] = ticker
+                            
+                        tool_result = await TOOL_REGISTRY[function_name](**function_args)
+                        tool_results[function_name] = tool_result
+                        
+                        # Add function call and result to conversation
+                        conversation_history.append({
+                            "role": "model",
+                            "parts": [{"functionCall": function_call}]
+                        })
+                        
+                        conversation_history.append({
+                            "role": "function",
+                            "parts": [{
+                                "functionResponse": {
+                                    "name": function_name,
+                                    "response": tool_result
+                                }
+                            }]
+                        })
+                        
+                    except Exception as e:
+                        logger.error(f"Error executing function {function_name}: {str(e)}")
+                        # Add error to conversation
+                        conversation_history.append({
+                            "role": "function", 
+                            "parts": [{
+                                "functionResponse": {
+                                    "name": function_name,
+                                    "response": {"success": False, "error": str(e)}
+                                }
+                            }]
+                        })
+                
+            else:
+                # AI provided final analysis without function calls
+                final_analysis = candidate["content"]["parts"][0].get("text", "")
+                
+                return {
+                    "final_analysis": final_analysis,
+                    "tool_calls_made": len(tool_results),
+                    "tools_used": list(tool_results.keys()),
+                    "tool_results": tool_results,
+                    "iterations": iteration + 1
+                }
+            
+            iteration += 1
+        
+        # If we've reached max iterations, return what we have
+        return {
+            "final_analysis": "Analysis completed with maximum iterations reached.",
+            "tool_calls_made": len(tool_results),
+            "tools_used": list(tool_results.keys()),
+            "tool_results": tool_results,
+            "iterations": iteration,
+            "note": "Maximum iterations reached"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in Gemini function calling: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Function calling failed: {str(e)}")
+
+@app.get("/agentic-tools")
+async def get_available_tools():
+    """Get list of available tools for agentic analysis"""
+    tool_descriptions = {
+        "fetch_quarterly_data": "Fetch quarterly financial statements and metrics",
+        "calculate_financial_ratios": "Calculate and compare financial ratios", 
+        "compare_with_peers": "Compare against industry competitors",
+        "get_analyst_consensus": "Get analyst ratings and price targets",
+        "fetch_market_context": "Get market conditions and sector performance",
+        "detect_financial_anomalies": "Identify unusual financial patterns",
+        "assess_financial_health": "Calculate comprehensive health score"
+    }
+    
+    return {
+        "available_tools": len(tool_descriptions),
+        "tools": tool_descriptions,
+        "description": "These tools can be dynamically called by the AI based on analysis needs"
+    }
 
 @app.get("/basic/{symbol}")
 @rate_limit_decorator
