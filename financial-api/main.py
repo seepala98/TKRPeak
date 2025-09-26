@@ -1210,50 +1210,74 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
             has_function_call = any("functionCall" in part for part in content_parts)
             
             if has_function_call:
-                function_call = candidate["content"]["parts"][0]["functionCall"]
-                function_name = function_call["name"]
-                function_args = function_call.get("args", {})
+                # Find all function calls in the response (there might be multiple)
+                function_calls_in_response = []
+                text_parts = []
                 
-                logger.info(f"AI calling function: {function_name} with args: {function_args}")
+                for part in content_parts:
+                    if "functionCall" in part:
+                        function_calls_in_response.append(part["functionCall"])
+                    elif "text" in part:
+                        text_parts.append(part["text"])
                 
-                # Execute the function call
-                if function_name in TOOL_REGISTRY:
-                    try:
-                        # Ensure ticker is in the arguments
-                        if "ticker" not in function_args:
-                            function_args["ticker"] = ticker
+                logger.info(f"Found {len(function_calls_in_response)} function call(s) and {len(text_parts)} text part(s)")
+                
+                # Add any text responses to conversation first
+                if text_parts:
+                    conversation_history.append({
+                        "role": "model",
+                        "parts": [{"text": " ".join(text_parts)}]
+                    })
+                
+                # Execute each function call
+                for function_call in function_calls_in_response:
+                    function_name = function_call["name"]
+                    function_args = function_call.get("args", {})
+                    
+                    logger.info(f"AI calling function: {function_name} with args: {function_args}")
+                    
+                    # Execute the function call
+                    if function_name in TOOL_REGISTRY:
+                        try:
+                            # Ensure ticker is in the arguments
+                            if "ticker" not in function_args:
+                                function_args["ticker"] = ticker
+                                
+                            tool_result = await TOOL_REGISTRY[function_name](**function_args)
+                            tool_results[function_name] = tool_result
                             
-                        tool_result = await TOOL_REGISTRY[function_name](**function_args)
-                        tool_results[function_name] = tool_result
-                        
-                        # Add function call and result to conversation
-                        conversation_history.append({
-                            "role": "model",
-                            "parts": [{"functionCall": function_call}]
-                        })
-                        
-                        conversation_history.append({
-                            "role": "function",
-                            "parts": [{
-                                "functionResponse": {
-                                    "name": function_name,
-                                    "response": tool_result
-                                }
-                            }]
-                        })
-                        
-                    except Exception as e:
-                        logger.error(f"Error executing function {function_name}: {str(e)}")
-                        # Add error to conversation
-                        conversation_history.append({
-                            "role": "function", 
-                            "parts": [{
-                                "functionResponse": {
-                                    "name": function_name,
-                                    "response": {"success": False, "error": str(e)}
-                                }
-                            }]
-                        })
+                            logger.info(f"Tool {function_name} executed successfully: {tool_result.get('success', 'unknown')}")
+                            
+                            # Add function call and result to conversation
+                            conversation_history.append({
+                                "role": "model",
+                                "parts": [{"functionCall": function_call}]
+                            })
+                            
+                            conversation_history.append({
+                                "role": "function",
+                                "parts": [{
+                                    "functionResponse": {
+                                        "name": function_name,
+                                        "response": tool_result
+                                    }
+                                }]
+                            })
+                            
+                        except Exception as e:
+                            logger.error(f"Error executing function {function_name}: {str(e)}")
+                            # Add error to conversation
+                            conversation_history.append({
+                                "role": "function", 
+                                "parts": [{
+                                    "functionResponse": {
+                                        "name": function_name,
+                                        "response": {"success": False, "error": str(e)}
+                                    }
+                                }]
+                            })
+                    else:
+                        logger.warning(f"Function {function_name} not found in TOOL_REGISTRY")
                 
             else:
                 # AI provided final analysis without function calls
