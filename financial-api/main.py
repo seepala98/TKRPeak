@@ -1106,23 +1106,24 @@ async def perform_agentic_analysis(request: AgenticAnalysisRequest):
         ]
         
         # Create initial analysis prompt for Gemini
-        initial_prompt = f"""You are an expert financial analyst with access to powerful financial analysis tools. 
-        
-Analyze {request.ticker} using a systematic approach:
+        initial_prompt = f"""You are a financial analyst AI with access to specialized financial analysis tools. You MUST use these tools to perform comprehensive analysis.
 
-1. INITIAL ASSESSMENT: Start by getting basic quarterly data and financial health assessment
-2. DEEP DIVE: Based on initial findings, use specific tools to explore areas of interest
-3. COMPARATIVE ANALYSIS: Compare with peers if concerning trends are found
-4. MARKET CONTEXT: Consider broader market conditions
-5. ANOMALY DETECTION: Look for red flags or unusual patterns
-6. FINAL RECOMMENDATION: Provide investment recommendation with supporting evidence
+IMPORTANT: You have access to 7 financial analysis tools. You MUST call these tools to gather data before making any conclusions.
 
-Use the available tools strategically to build a comprehensive analysis. Call tools in a logical sequence based on what you discover.
+MANDATORY FIRST STEPS for {request.ticker}:
+1. IMMEDIATELY call fetch_quarterly_data for {request.ticker} to get recent quarterly financial data
+2. IMMEDIATELY call assess_financial_health for {request.ticker} to get overall financial health score
 
-Analysis Type: {request.analysis_type}
-Focus Areas: {request.focus_areas if request.focus_areas else 'All areas'}
+After getting initial data from these tools, you may call additional tools based on what you discover:
+- calculate_financial_ratios: For detailed ratio analysis
+- compare_with_peers: If you need competitive benchmarking  
+- fetch_market_context: For market conditions and sector performance
+- detect_financial_anomalies: If you spot concerning patterns
+- get_analyst_consensus: For professional analyst opinions
 
-Begin with fetching quarterly data and financial health assessment for {request.ticker}."""
+DO NOT provide any analysis or recommendations until you have called tools and received actual data.
+
+Your task: Analyze {request.ticker} stock. START NOW by calling fetch_quarterly_data and assess_financial_health."""
 
         # Call Gemini with function calling capability
         analysis_result = await call_gemini_with_function_calling(
@@ -1173,12 +1174,16 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
                     "function_declarations": tool_schemas
                 }],
                 "generationConfig": {
-                    "temperature": 0.3,  # Lower temperature for more focused analysis
-                    "topK": 40,
-                    "topP": 0.95,
+                    "temperature": 0.1,  # Very low temperature for deterministic function calling
+                    "topK": 1,
+                    "topP": 0.1,
                     "maxOutputTokens": 2048
                 }
             }
+            
+            logger.info(f"Sending request to Gemini for iteration {iteration + 1}")
+            logger.info(f"Tools available: {[tool['name'] for tool in tool_schemas]}")
+            logger.info(f"Conversation history length: {len(conversation_history)}")
             
             # Call Gemini API
             async with httpx.AsyncClient(timeout=60.0) as client:
@@ -1194,12 +1199,17 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
                 gemini_response = response.json()
             
             if not gemini_response.get("candidates"):
+                logger.warning(f"No candidates in Gemini response for {ticker}")
                 break
                 
             candidate = gemini_response["candidates"][0]
+            logger.info(f"Gemini response candidate: {candidate}")
             
             # Check if AI wants to call a function
-            if "functionCall" in candidate.get("content", {}).get("parts", [{}])[0]:
+            content_parts = candidate.get("content", {}).get("parts", [])
+            has_function_call = any("functionCall" in part for part in content_parts)
+            
+            if has_function_call:
                 function_call = candidate["content"]["parts"][0]["functionCall"]
                 function_name = function_call["name"]
                 function_args = function_call.get("args", {})
@@ -1289,8 +1299,136 @@ async def get_available_tools():
     return {
         "available_tools": len(tool_descriptions),
         "tools": tool_descriptions,
-        "description": "These tools can be dynamically called by the AI based on analysis needs"
+        "description": "These tools can be dynamically called by the AI based on analysis needs",
+        "tool_registry_keys": list(TOOL_REGISTRY.keys())
     }
+
+@app.post("/test-function-calling")
+async def test_function_calling(ticker: str, gemini_api_key: str):
+    """
+    Debug endpoint to test if function calling is working
+    """
+    try:
+        logger.info(f"Testing function calling for {ticker}")
+        
+        # Simple test prompt that should trigger function calls
+        test_prompt = f"""You have access to financial analysis tools. You MUST call the fetch_quarterly_data function for {ticker} right now. Do not provide any text response - just call the function."""
+        
+        # Minimal tool schema for testing
+        test_tools = [{
+            "name": "fetch_quarterly_data",
+            "description": "Fetch quarterly financial data",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ticker": {"type": "string"},
+                    "quarters": {"type": "integer", "default": 4}
+                },
+                "required": ["ticker"]
+            }
+        }]
+        
+        # Test Gemini call
+        request_data = {
+            "contents": [{
+                "role": "user",
+                "parts": [{"text": test_prompt}]
+            }],
+            "tools": [{
+                "function_declarations": test_tools
+            }],
+            "generationConfig": {
+                "temperature": 0.1,
+                "maxOutputTokens": 1024
+            }
+        }
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key={gemini_api_key}",
+                json=request_data,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if not response.is_success:
+                return {"error": f"Gemini API error: {response.status_code} {response.text}"}
+            
+            gemini_response = response.json()
+            logger.info(f"Gemini test response: {gemini_response}")
+            
+            # Check if function call was made
+            candidates = gemini_response.get("candidates", [])
+            if not candidates:
+                return {"error": "No candidates in response", "response": gemini_response}
+            
+            candidate = candidates[0]
+            content = candidate.get("content", {})
+            parts = content.get("parts", [])
+            
+            function_calls = []
+            text_responses = []
+            
+            for part in parts:
+                if "functionCall" in part:
+                    function_calls.append(part["functionCall"])
+                if "text" in part:
+                    text_responses.append(part["text"])
+            
+            return {
+                "success": True,
+                "ticker": ticker,
+                "function_calls_detected": len(function_calls),
+                "function_calls": function_calls,
+                "text_responses": text_responses,
+                "full_response": gemini_response
+            }
+            
+    except Exception as e:
+        logger.error(f"Function calling test failed: {str(e)}")
+        return {"error": str(e)}
+
+@app.post("/test-tools")
+async def test_tools_directly(ticker: str):
+    """
+    Test individual tools directly to verify they work
+    """
+    try:
+        logger.info(f"Testing tools directly for {ticker}")
+        tools = FinancialAnalysisTools()
+        
+        results = {}
+        
+        # Test fetch_quarterly_data
+        try:
+            result = await tools.fetch_quarterly_data(ticker, quarters=4)
+            results["fetch_quarterly_data"] = {
+                "success": result.get("success", False),
+                "quarters": result.get("quarters", 0),
+                "has_data": len(result.get("data", [])) > 0
+            }
+        except Exception as e:
+            results["fetch_quarterly_data"] = {"error": str(e)}
+        
+        # Test assess_financial_health
+        try:
+            result = await tools.assess_financial_health(ticker, include_scores=True)
+            results["assess_financial_health"] = {
+                "success": result.get("success", False),
+                "overall_score": result.get("assessment", {}).get("overall_score", "N/A")
+            }
+        except Exception as e:
+            results["assess_financial_health"] = {"error": str(e)}
+        
+        return {
+            "success": True,
+            "ticker": ticker,
+            "tool_test_results": results,
+            "tool_registry_available": list(TOOL_REGISTRY.keys())
+        }
+        
+    except Exception as e:
+        logger.error(f"Direct tool test failed: {str(e)}")
+        return {"error": str(e)}
 
 @app.get("/basic/{symbol}")
 @rate_limit_decorator

@@ -247,7 +247,156 @@ function createTestButton() {
     document.querySelector('.container').appendChild(testBtn);
 }
 
-// Add test button in development mode
-if (chrome.runtime.getManifest().version.includes('dev')) {
-    document.addEventListener('DOMContentLoaded', createTestButton);
+// Add test buttons for debugging
+document.addEventListener('DOMContentLoaded', () => {
+    createTestButtons();
+});
+
+function createTestButtons() {
+    const container = document.querySelector('.container');
+    
+    // Create test section
+    const testSection = document.createElement('div');
+    testSection.className = 'section';
+    testSection.innerHTML = `
+        <h2>🧪 Debugging & Testing</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <button id="testFunctionCalling" class="test-btn">🤖 Test Function Calling</button>
+            <button id="testToolsDirectly" class="test-btn">🔧 Test Tools Directly</button>
+        </div>
+        <div id="testResults" class="test-results" style="margin-top: 15px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px; font-family: monospace; font-size: 11px; line-height: 1.4; color: rgba(255,255,255,0.8); display: none;"></div>
+    `;
+    
+    // Add CSS for test buttons
+    const style = document.createElement('style');
+    style.textContent = `
+        .test-btn {
+            background: rgba(79, 70, 229, 0.2);
+            border: 1px solid rgba(79, 70, 229, 0.4);
+            color: #6366f1;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .test-btn:hover {
+            background: rgba(79, 70, 229, 0.3);
+            transform: translateY(-1px);
+        }
+        .test-results {
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    container.appendChild(testSection);
+    
+    // Add event listeners
+    document.getElementById('testFunctionCalling').addEventListener('click', testFunctionCalling);
+    document.getElementById('testToolsDirectly').addEventListener('click', testToolsDirectly);
+}
+
+async function testFunctionCalling() {
+    const resultsEl = document.getElementById('testResults');
+    const btn = document.getElementById('testFunctionCalling');
+    
+    try {
+        btn.disabled = true;
+        btn.textContent = '🤖 Testing...';
+        resultsEl.style.display = 'block';
+        resultsEl.textContent = 'Testing Gemini function calling...\n';
+        
+        const settings = await new Promise(resolve => {
+            chrome.storage.sync.get(['geminiApiKey'], resolve);
+        });
+        
+        if (!settings.geminiApiKey) {
+            resultsEl.textContent += 'ERROR: Gemini API key not configured\n';
+            return;
+        }
+        
+        const response = await fetch('http://localhost:8000/test-function-calling', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `ticker=AAPL&gemini_api_key=${settings.geminiApiKey}`
+        });
+        
+        const result = await response.json();
+        
+        resultsEl.textContent += `Response: ${response.status}\n`;
+        resultsEl.textContent += `Function calls detected: ${result.function_calls_detected || 0}\n`;
+        
+        if (result.function_calls && result.function_calls.length > 0) {
+            resultsEl.textContent += `✅ SUCCESS: Function calling is working!\n`;
+            resultsEl.textContent += `Functions called: ${result.function_calls.map(fc => fc.name).join(', ')}\n`;
+        } else {
+            resultsEl.textContent += `❌ ISSUE: No function calls detected\n`;
+            resultsEl.textContent += `Text responses: ${result.text_responses?.length || 0}\n`;
+            if (result.text_responses) {
+                resultsEl.textContent += `AI said: ${result.text_responses.join(' ')}\n`;
+            }
+        }
+        
+        resultsEl.textContent += `\nFull result: ${JSON.stringify(result, null, 2)}\n`;
+        
+    } catch (error) {
+        resultsEl.textContent += `ERROR: ${error.message}\n`;
+        resultsEl.textContent += 'Make sure FastAPI service is running: cd financial-api && ./start-api.sh\n';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🤖 Test Function Calling';
+    }
+}
+
+async function testToolsDirectly() {
+    const resultsEl = document.getElementById('testResults');
+    const btn = document.getElementById('testToolsDirectly');
+    
+    try {
+        btn.disabled = true;
+        btn.textContent = '🔧 Testing...';
+        resultsEl.style.display = 'block';
+        resultsEl.textContent = 'Testing financial analysis tools directly...\n';
+        
+        const response = await fetch('http://localhost:8000/test-tools', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'ticker=AAPL'
+        });
+        
+        const result = await response.json();
+        
+        resultsEl.textContent += `Response: ${response.status}\n`;
+        resultsEl.textContent += `Available tools: ${result.tool_registry_available?.join(', ') || 'None'}\n\n`;
+        
+        const toolResults = result.tool_test_results || {};
+        
+        for (const [toolName, toolResult] of Object.entries(toolResults)) {
+            if (toolResult.error) {
+                resultsEl.textContent += `❌ ${toolName}: ${toolResult.error}\n`;
+            } else {
+                resultsEl.textContent += `✅ ${toolName}: SUCCESS\n`;
+                if (toolName === 'fetch_quarterly_data') {
+                    resultsEl.textContent += `   - Quarters: ${toolResult.quarters}\n`;
+                    resultsEl.textContent += `   - Has data: ${toolResult.has_data}\n`;
+                }
+                if (toolName === 'assess_financial_health') {
+                    resultsEl.textContent += `   - Health score: ${toolResult.overall_score}\n`;
+                }
+            }
+        }
+        
+        resultsEl.textContent += `\nFull result: ${JSON.stringify(result, null, 2)}\n`;
+        
+    } catch (error) {
+        resultsEl.textContent += `ERROR: ${error.message}\n`;
+        resultsEl.textContent += 'Make sure FastAPI service is running: cd financial-api && ./start-api.sh\n';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🔧 Test Tools Directly';
+    }
 }
