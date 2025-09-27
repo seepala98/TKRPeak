@@ -1305,6 +1305,21 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
                             
                             logger.info(f"Tool {function_name} executed successfully: {tool_result.get('success', 'unknown')}")
                             
+                            # Clean tool result for JSON serialization before adding to conversation
+                            def clean_for_json_agentic(obj):
+                                if isinstance(obj, dict):
+                                    return {k: clean_for_json_agentic(v) for k, v in obj.items()}
+                                elif isinstance(obj, list):
+                                    return [clean_for_json_agentic(item) for item in obj]
+                                elif hasattr(obj, 'item'):  # numpy scalar
+                                    return obj.item()
+                                elif hasattr(obj, 'tolist'):  # numpy array
+                                    return obj.tolist()
+                                else:
+                                    return obj
+                            
+                            clean_tool_result = clean_for_json_agentic(tool_result)
+                            
                             # Add function call and result to conversation
                             conversation_history.append({
                                 "role": "model",
@@ -1316,7 +1331,7 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
                                 "parts": [{
                                     "functionResponse": {
                                         "name": function_name,
-                                        "response": tool_result
+                                        "response": clean_tool_result
                                     }
                                 }]
                             })
@@ -1340,11 +1355,26 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
                 # AI provided final analysis without function calls
                 final_analysis = candidate["content"]["parts"][0].get("text", "")
                 
+                # Clean tool_results for JSON serialization before final return
+                def clean_for_final_response(obj):
+                    if isinstance(obj, dict):
+                        return {k: clean_for_final_response(v) for k, v in obj.items()}
+                    elif isinstance(obj, list):
+                        return [clean_for_final_response(item) for item in obj]
+                    elif hasattr(obj, 'item'):  # numpy scalar
+                        return obj.item()
+                    elif hasattr(obj, 'tolist'):  # numpy array
+                        return obj.tolist()
+                    else:
+                        return obj
+                
+                clean_tool_results = clean_for_final_response(tool_results)
+                
                 return {
                     "final_analysis": final_analysis,
                     "tool_calls_made": len(tool_results),
                     "tools_used": list(tool_results.keys()),
-                    "tool_results": tool_results,
+                    "tool_results": clean_tool_results,
                     "iterations": iteration + 1
                 }
             
@@ -1354,12 +1384,27 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
             if iteration < max_iterations:
                 await asyncio.sleep(0.5)  # 500ms delay between iterations
         
+        # Clean tool_results for JSON serialization before final return
+        def clean_for_final_response(obj):
+            if isinstance(obj, dict):
+                return {k: clean_for_final_response(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [clean_for_final_response(item) for item in obj]
+            elif hasattr(obj, 'item'):  # numpy scalar
+                return obj.item()
+            elif hasattr(obj, 'tolist'):  # numpy array
+                return obj.tolist()
+            else:
+                return obj
+        
+        clean_tool_results = clean_for_final_response(tool_results)
+        
         # If we've reached max iterations, return what we have
         return {
             "final_analysis": "Analysis completed with maximum iterations reached.",
             "tool_calls_made": len(tool_results),
             "tools_used": list(tool_results.keys()),
-            "tool_results": tool_results,
+            "tool_results": clean_tool_results,
             "iterations": iteration,
             "note": "Maximum iterations reached"
         }
