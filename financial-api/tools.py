@@ -832,12 +832,15 @@ class FinancialAnalysisTools:
         return sector_etfs.get(sector)
 
 # Tool registry for function calling
+# Create a single instance for all tools to ensure proper method binding
+_tools_instance = FinancialAnalysisTools()
+
 TOOL_REGISTRY = {
-    "fetch_quarterly_data": FinancialAnalysisTools().fetch_quarterly_data,
-    "calculate_financial_ratios": FinancialAnalysisTools().calculate_financial_ratios,
-    "compare_with_peers": FinancialAnalysisTools().compare_with_peers,
-    "get_analyst_consensus": FinancialAnalysisTools().get_analyst_consensus,
-    "fetch_market_context": FinancialAnalysisTools().fetch_market_context,
-    "detect_financial_anomalies": FinancialAnalysisTools().detect_financial_anomalies,
-    "assess_financial_health": FinancialAnalysisTools().assess_financial_health
+    "fetch_quarterly_data": _tools_instance.fetch_quarterly_data,
+    "calculate_financial_ratios": _tools_instance.calculate_financial_ratios,
+    "compare_with_peers": _tools_instance.compare_with_peers,
+    "get_analyst_consensus": _tools_instance.get_analyst_consensus,
+    "fetch_market_context": _tools_instance.fetch_market_context,
+    "detect_financial_anomalies": _tools_instance.detect_financial_anomalies,
+    "assess_financial_health": _tools_instance.assess_financial_health
 }

@@ -1052,7 +1052,8 @@ async def perform_agentic_analysis(request: AgenticAnalysisRequest):
                         "metrics": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "description": "Key metrics to compare: revenue, net_income, ROE, Current_Ratio, Debt_to_Equity, etc."
+                            "description": "REQUIRED: Financial metrics to compare. Use these standard metrics: ['revenue', 'net_income', 'ROE', 'Current_Ratio', 'Debt_to_Equity'] for comprehensive analysis.",
+                            "default": ["revenue", "net_income", "ROE", "Current_Ratio", "Debt_to_Equity"]
                         }
                     },
                     "required": ["ticker", "peers", "metrics"]
@@ -1150,7 +1151,7 @@ FINAL ANALYSIS REQUIREMENTS:
 - Provide specific reasoning comparing to peers and market context
 - Address: Growth vs peers, valuation vs sector, competitive advantages/risks
 - Include specific metrics from your peer comparison (e.g., "NVDA ROE 45% vs AMD 25%")
-- End your analysis with: "RECOMMENDATION: [YOUR_CHOICE]" for clarity
+- End your analysis with: "Recommendation: [YOUR_CHOICE]" for clarity
 
 DO NOT provide any analysis or recommendations until you have called MULTIPLE tools and built comprehensive competitive context. After 4-5 tool calls, STOP calling tools and SYNTHESIZE your comprehensive analysis.
 
@@ -1319,6 +1320,11 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
                             # Ensure ticker is in the arguments
                             if "ticker" not in function_args:
                                 function_args["ticker"] = ticker
+                            
+                            # Handle compare_with_peers missing metrics (Gemini sometimes omits required params)
+                            if function_name == "compare_with_peers" and "metrics" not in function_args:
+                                function_args["metrics"] = ["revenue", "net_income", "ROE", "Current_Ratio", "Debt_to_Equity"]
+                                logger.info(f"Added default metrics to compare_with_peers: {function_args['metrics']}")
                                 
                             tool_result = await TOOL_REGISTRY[function_name](**function_args)
                             tool_results[function_name] = tool_result
@@ -1358,6 +1364,8 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
                             
                         except Exception as e:
                             logger.error(f"Error executing function {function_name}: {str(e)}")
+                            logger.error(f"Function args were: {function_args}")
+                            logger.error(f"Function signature: {TOOL_REGISTRY[function_name]}")
                             # Add error to conversation
                             conversation_history.append({
                                 "role": "function", 
@@ -1603,6 +1611,8 @@ async def test_tools_directly(ticker: str):
                     "error": result.get("error", "Unknown error")
                 }
         except Exception as e:
+            logger.error(f"Error in test-tools compare_with_peers: {str(e)}")
+            logger.error(f"Test args were - ticker: {ticker}, peers: ['WMT', 'BABA'], metrics: ['revenue', 'net_income', 'ROE', 'Current_Ratio', 'Debt_to_Equity']")
             results["compare_with_peers"] = {"error": str(e)}
         
         # Test get_analyst_consensus (failing tool)
