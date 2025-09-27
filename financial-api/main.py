@@ -1039,7 +1039,7 @@ async def perform_agentic_analysis(request: AgenticAnalysisRequest):
             },
             {
                 "name": "compare_with_peers",
-                "description": "Compare company metrics against industry competitors",
+                "description": "ESSENTIAL: Compare company against competitors for proper valuation context. Without peer comparison, financial analysis is incomplete. Automatically selects relevant competitors and compares key metrics like revenue, profitability, valuation ratios. Critical for determining if metrics are good/bad relative to sector standards.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -1047,11 +1047,12 @@ async def perform_agentic_analysis(request: AgenticAnalysisRequest):
                         "peers": {
                             "type": "array", 
                             "items": {"type": "string"},
-                            "description": "Competitor ticker symbols"
+                            "description": "Competitor ticker symbols (AI should choose 2-3 relevant competitors)"
                         },
                         "metrics": {
                             "type": "array",
-                            "items": {"type": "string"}
+                            "items": {"type": "string"},
+                            "description": "Key metrics to compare: revenue, net_income, ROE, Current_Ratio, Debt_to_Equity, etc."
                         }
                     },
                     "required": ["ticker", "peers", "metrics"]
@@ -1110,31 +1111,50 @@ async def perform_agentic_analysis(request: AgenticAnalysisRequest):
         ]
         
         # Create initial analysis prompt for Gemini
-        initial_prompt = f"""You are a DECISIVE financial analyst AI with access to specialized financial analysis tools. Your goal is to provide CLEAR, ACTIONABLE investment recommendations.
+        initial_prompt = f"""You are a DECISIVE financial analyst AI with access to specialized financial analysis tools. Your goal is to provide COMPREHENSIVE, ACTIONABLE investment recommendations.
 
-IMPORTANT: You have access to 7 financial analysis tools. You MUST call these tools to gather data before making any conclusions.
+IMPORTANT: You have access to 7 financial analysis tools. You MUST call MULTIPLE tools to build a complete analysis before making conclusions.
 
 MANDATORY FIRST STEPS for {request.ticker}:
 1. IMMEDIATELY call fetch_quarterly_data for {request.ticker} to get recent quarterly financial data
 2. IMMEDIATELY call assess_financial_health for {request.ticker} to get overall financial health score
 
-After getting initial data from these tools, you may call additional tools based on what you discover:
-- calculate_financial_ratios: For detailed ratio analysis
-- compare_with_peers: If you need competitive benchmarking  
-- fetch_market_context: For market conditions and sector performance
-- detect_financial_anomalies: If you spot concerning patterns
-- get_analyst_consensus: For professional analyst opinions
+COMPREHENSIVE ANALYSIS REQUIREMENTS - You MUST gather ALL these perspectives:
+3. ALWAYS call compare_with_peers to understand competitive positioning (this is CRITICAL for context)
+4. ALWAYS call get_analyst_consensus to get professional market sentiment
+5. Consider calling calculate_financial_ratios for detailed valuation analysis
+6. Consider calling fetch_market_context for broader economic conditions
+7. Consider calling detect_financial_anomalies if you spot any concerning patterns
+
+WHY PEER COMPARISON IS ESSENTIAL:
+- A P/E of 25 could be cheap or expensive depending on sector
+- Revenue growth of 10% might be excellent or poor vs competitors
+- Financial metrics only make sense in competitive context
+- Investors need to know: "Is this the best stock in its sector?"
+
+ANALYSIS DEPTH REQUIREMENTS:
+- Use AT LEAST 4-5 different tools for comprehensive analysis
+- Always include competitive benchmarking via compare_with_peers
+- Cross-validate findings across multiple data sources
+- Consider both absolute metrics AND relative performance
+
+ANALYSIS COMPLETION GUIDELINES:
+- After calling 4-5 tools (including compare_with_peers), STOP calling tools and SYNTHESIZE your findings
+- Integrate all tool results into a comprehensive analysis
+- Compare company performance vs peers using actual data from compare_with_peers
+- Reference specific numbers and rankings from your tool calls
 
 FINAL ANALYSIS REQUIREMENTS:
 - Be DECISIVE in your recommendation - avoid wishy-washy language
 - Choose ONE clear recommendation: STRONG BUY, BUY, HOLD, SELL, or STRONG SELL
-- Provide specific reasoning for your recommendation
-- Consider: Growth prospects, financial health, valuation, competitive position
+- Provide specific reasoning comparing to peers and market context
+- Address: Growth vs peers, valuation vs sector, competitive advantages/risks
+- Include specific metrics from your peer comparison (e.g., "NVDA ROE 45% vs AMD 25%")
 - End your analysis with: "RECOMMENDATION: [YOUR_CHOICE]" for clarity
 
-DO NOT provide any analysis or recommendations until you have called tools and received actual data.
+DO NOT provide any analysis or recommendations until you have called MULTIPLE tools and built comprehensive competitive context. After 4-5 tool calls, STOP calling tools and SYNTHESIZE your comprehensive analysis.
 
-Your task: Analyze {request.ticker} stock thoroughly and provide a DECISIVE investment recommendation. START NOW by calling fetch_quarterly_data and assess_financial_health."""
+Your task: Provide INSTITUTIONAL-QUALITY analysis of {request.ticker} with full competitive benchmarking. START NOW by calling fetch_quarterly_data and assess_financial_health, then ALWAYS call compare_with_peers for context."""
 
         # Call Gemini with function calling capability
         analysis_result = await call_gemini_with_function_calling(
@@ -1220,7 +1240,7 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
     AI can dynamically call tools based on its analysis needs
     """
     try:
-        max_iterations = 5  # Prevent infinite loops
+        max_iterations = 7  # Allow for comprehensive analysis with synthesis
         iteration = 0
         conversation_history = []
         tool_results = {}
