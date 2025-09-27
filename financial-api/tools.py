@@ -204,6 +204,9 @@ class FinancialAnalysisTools:
         Helps AI understand broader market conditions
         """
         try:
+            # Convert AI timeframe to yfinance format
+            yf_timeframe = self._convert_timeframe(timeframe)
+            
             stock = yf.Ticker(ticker)
             info = stock.info
             
@@ -221,7 +224,7 @@ class FinancialAnalysisTools:
             
             for index_ticker, name in indices.items():
                 index_data = yf.Ticker(index_ticker)
-                hist = index_data.history(period=timeframe)
+                hist = index_data.history(period=yf_timeframe)
                 if not hist.empty:
                     start_price = hist['Close'].iloc[0]
                     end_price = hist['Close'].iloc[-1]
@@ -229,7 +232,7 @@ class FinancialAnalysisTools:
                     
                     market_data[name] = {
                         "performance": round(performance, 2),
-                        "timeframe": timeframe
+                        "timeframe": timeframe  # Keep original for display
                     }
             
             # Get sector ETF performance if available
@@ -238,7 +241,7 @@ class FinancialAnalysisTools:
                 sector_etf = self._get_sector_etf(sector)
                 if sector_etf:
                     etf_data = yf.Ticker(sector_etf)
-                    hist = etf_data.history(period=timeframe)
+                    hist = etf_data.history(period=yf_timeframe)
                     if not hist.empty:
                         start_price = hist['Close'].iloc[0]
                         end_price = hist['Close'].iloc[-1]
@@ -813,6 +816,26 @@ class FinancialAnalysisTools:
             return 40
         else:
             return 20
+    
+    def _convert_timeframe(self, timeframe: str) -> str:
+        """Convert AI timeframe format to yfinance format"""
+        # Map common AI formats to yfinance periods
+        timeframe_map = {
+            "1D": "1d", "1d": "1d",
+            "5D": "5d", "5d": "5d", 
+            "1M": "1mo", "1m": "1mo", "1mo": "1mo",
+            "3M": "3mo", "3m": "3mo", "3mo": "3mo",
+            "6M": "6mo", "6m": "6mo", "6mo": "6mo",
+            "1Y": "1y", "1y": "1y",
+            "2Y": "2y", "2y": "2y",
+            "5Y": "5y", "5y": "5y",
+            "10Y": "10y", "10y": "10y",
+            "YTD": "ytd", "ytd": "ytd",
+            "MAX": "max", "max": "max"
+        }
+        
+        # Return mapped value or default to 6mo if unknown
+        return timeframe_map.get(timeframe, "6mo")
     
     def _get_sector_etf(self, sector: str) -> Optional[str]:
         """Get sector ETF ticker for given sector"""
