@@ -9,11 +9,13 @@ A comprehensive Chrome extension that provides **real-time stock analysis**, **q
 - **💼 Advanced Metrics**: Comprehensive financial ratios, TTM performance, balance sheet analysis
 - **📈 Quarterly Trends**: Historical quarterly analysis with growth calculations and AI insights
 
-### 🤖 **AI-Powered Investment Analysis**
-- **Gemini 2.0 Flash Integration**: Intelligent analysis of quarterly financial data
-- **Buy/Hold/Sell Recommendations**: Color-coded AI recommendations with detailed rationale
-- **Smart Insights**: Real growth trend calculations (no more "always stable" data)
-- **Comprehensive Analysis**: Revenue trends, profitability, cash flow, and balance sheet health
+### 🤖 **Agentic AI-Powered Investment Analysis**
+- **🧠 Intelligent Agent**: AI dynamically chooses from 7 specialized financial analysis tools
+- **🔄 Multi-Step Analysis**: 3-5 iterations of intelligent decision-making per stock
+- **🎯 Decisive Recommendations**: Enhanced STRONG BUY/BUY/HOLD/SELL/STRONG SELL with rationale
+- **📊 Peer Comparisons**: AI intelligently selects and compares with relevant competitors
+- **💡 Contextual Insights**: Real growth trend calculations with professional analyst data
+- **⚙️ Dual Mode**: Agentic (function calling) and Static analysis with smart fallback
 
 ### ⚡ **Advanced Data Integration**
 - **FastAPI Backend**: Self-hosted Python service for comprehensive financial data
@@ -86,28 +88,120 @@ A comprehensive Chrome extension that provides **real-time stock analysis**, **q
 
 ---
 
-## 🤖 **AI Analysis Features**
+## 🤖 **Agentic AI Analysis Features**
 
-### **Gemini 2.0 Flash Integration**
-The extension sends comprehensive quarterly data to Google's Gemini 2.0 Flash model for intelligent analysis:
+### **🧠 Intelligent Financial Agent**
+Revolutionary **agentic AI** that doesn't just analyze pre-formatted data—it **dynamically decides** which specialized tools to use for comprehensive stock analysis.
 
-**Data Analyzed:**
-- 6+ quarters of revenue trends
-- Cash flow evolution patterns
-- Balance sheet changes over time
-- Profitability margin trends
-- Growth rate calculations
+**How Agentic AI Works:**
+```
+1. 🎯 INITIAL ANALYSIS: AI calls fetch_quarterly_data + assess_financial_health
+2. 🔍 INTELLIGENT DECISION: Based on findings, AI chooses next steps:
+   • High P/E ratio detected → calls calculate_financial_ratios
+   • Competitive analysis needed → calls compare_with_peers  
+   • Market concerns found → calls detect_financial_anomalies
+3. 📊 COMPREHENSIVE SYNTHESIS: AI combines all tool results for final recommendation
+4. 🎯 DECISIVE OUTPUT: Clear STRONG BUY/BUY/HOLD/SELL/STRONG SELL conclusion
+```
 
-**AI Insights Include:**
-- **Financial Health Assessment**: Revenue growth sustainability, profitability trends, cash generation efficiency
-- **Strengths & Concerns**: What the company is doing well vs. main financial risks
-- **Investment Recommendation**: STRONG BUY / BUY / HOLD / SELL / STRONG SELL
-- **Supporting Rationale**: 2-3 key reasons backing the recommendation
+### **🔧 7 Specialized Financial Analysis Tools**
 
-**Visual Presentation:**
-- 🟢 **BUY recommendations**: Green background with upward trend indicators
-- 🟡 **HOLD recommendations**: Orange background with stability indicators  
-- 🔴 **SELL recommendations**: Red background with downward trend warnings
+**1. 📊 fetch_quarterly_data**
+- Retrieves 6+ quarters of historical financial performance
+- Revenue, net income, cash flow, balance sheet evolution
+- Calculates QoQ and YoY growth rates dynamically
+
+**2. 🏥 assess_financial_health**  
+- Comprehensive health score (0-100) with detailed breakdown
+- Liquidity, leverage, profitability, and efficiency analysis
+- Identifies strengths and risk areas automatically
+
+**3. 🧮 calculate_financial_ratios**
+- P/E, ROE, Current Ratio, Debt-to-Equity, margins
+- Industry benchmarking and ratio interpretation
+- Valuation and profitability assessments
+
+**4. 🏢 compare_with_peers**
+- AI intelligently selects relevant competitors 
+- Side-by-side comparison of revenue, profitability, ratios
+- Competitive positioning and market ranking
+
+**5. 👨‍💼 get_analyst_consensus**
+- Professional analyst ratings and price targets
+- 31+ analyst opinions aggregation (Strong Buy to Strong Sell)
+- Market sentiment and professional recommendations
+
+**6. 🌍 fetch_market_context**
+- Broader market conditions and sector performance
+- Economic context and industry trends analysis
+- Market timing and macroeconomic factors
+
+**7. 🚨 detect_financial_anomalies**
+- Red flag detection in financial statements
+- Unusual patterns and concerning trends identification
+- Risk assessment and warning signals
+
+### **⚡ Multi-Step Intelligent Analysis**
+
+**Example: AMZN Analysis Journey**
+```
+🤖 Iteration 1: Basic Assessment
+   ✅ Called: fetch_quarterly_data, assess_financial_health
+   📊 Found: Health score 60/100, liquidity concerns
+
+🤖 Iteration 2: Ratio Deep-Dive  
+   ✅ Called: calculate_financial_ratios
+   📊 Found: Current ratio 1.06 (tight), ROE strong at 24.77%
+
+🤖 Iteration 3: Competitive Context
+   ✅ Called: compare_with_peers (WMT, BABA)  
+   📊 Found: Revenue growth competitive, liquidity below peers
+
+🤖 Iteration 4: Market Sentiment
+   ✅ Called: get_analyst_consensus
+   📊 Found: 15 Buy, 8 Hold, 2 Sell ratings
+
+🎯 Final AI Recommendation: HOLD
+   💡 Reasoning: "Strong growth trajectory balanced by liquidity 
+      management concerns. Monitor Q4 cash flow closely."
+```
+
+### **🎛️ Dual Analysis Modes**
+
+**🤖 Agentic Mode (Recommended)**
+- AI dynamically calls tools based on what it discovers
+- 3-5 iterations of intelligent analysis
+- Comprehensive peer comparisons and market context  
+- Professional-grade multi-faceted analysis
+
+**📝 Static Mode (Fallback)**
+- Traditional fixed-prompt analysis of quarterly data
+- Single-iteration comprehensive report
+- Reliable backup when agentic analysis unavailable
+
+**⚙️ Configuration**
+- Access via Extension Options (right-click extension icon → Options)
+- Toggle between agentic and static analysis modes
+- Built-in testing tools for debugging AI functionality
+
+### **🎯 Enhanced Recommendation Intelligence**
+
+**3-Tier Extraction System:**
+1. **📌 Direct Format**: `RECOMMENDATION: STRONG BUY` (explicit AI formatting)
+2. **🔍 Keyword Detection**: Standard phrases (`STRONG BUY`, `BUY`, `HOLD`, `SELL`, `STRONG SELL`)
+3. **🧠 Contextual Analysis**: Natural language (`recommend buying`, `excellent investment`, `overvalued`, `concerning risks`)
+
+**Decision Quality Improvements:**
+- ✅ **More BUY/SELL decisions** (vs. default HOLD recommendations)
+- ✅ **Context-aware reasoning** based on complete financial picture
+- ✅ **Professional-grade analysis** combining quantitative and qualitative factors
+
+### **📊 Visual Intelligence Dashboard**
+- 🟢 **BUY recommendations**: Green background with growth indicators
+- 🔵 **HOLD recommendations**: Blue background with stability signals  
+- 🔴 **SELL recommendations**: Red background with risk warnings
+- 🤖 **Agentic badge**: Shows tools used and analysis iterations
+- ⚡ **Real-time updates**: Live analysis progression display
 
 ---
 
@@ -139,16 +233,30 @@ curl http://localhost:8000/health
 # Should return: {"status": "healthy", "rate_limiting": "active", "cache": "enabled"}
 ```
 
-### **3. Gemini API Configuration (For AI Analysis)**
+### **3. Agentic AI Configuration**
 ```bash
-# Get Gemini API Key from Google AI Studio
-# https://ai.google.dev/
+# Step 1: Get Gemini API Key
+# Visit: https://aistudio.google.com/app/apikey
+# Create new API key for Gemini 2.0 Flash
 
-# In Chrome:
+# Step 2: Configure Extension
 # 1. Right-click extension icon → Options
-# 2. Enter your Gemini API key
-# 3. Save configuration
-# 4. AI analysis will now work in Quarterly Trends tab
+# 2. Enter your Gemini API key in "Gemini API Configuration"
+# 3. Choose analysis mode:
+#    - ✅ Agentic AI Analysis (Recommended): Dynamic tool calling
+#    - 📝 Static Analysis: Traditional prompt-based analysis
+# 4. Save Settings
+
+# Step 3: Test Configuration  
+# - Click "🤖 Test Function Calling" to verify agentic AI works
+# - Click "🔧 Test Tools Directly" to check individual financial tools
+# - Test with a stock analysis to see multi-step intelligent analysis
+
+# Step 4: Usage
+# AI analysis now works in Quarterly Trends tab with:
+# - 🤖 Agentic mode: 3-5 iterations of intelligent tool selection
+# - 📊 Complete peer comparisons and analyst consensus
+# - 🎯 Decisive STRONG BUY/BUY/HOLD/SELL/STRONG SELL recommendations
 ```
 
 ---
@@ -169,18 +277,46 @@ stock_extension/
 ### **FastAPI Backend Service**
 ```
 financial-api/
-├── main.py                   # FastAPI application with yfinance integration
-├── requirements.txt          # Python dependencies
+├── main.py                   # FastAPI application with agentic AI endpoints
+├── tools.py                  # 7 specialized financial analysis tools
+├── requirements.txt          # Python dependencies (includes yfinance, httpx)
 ├── Dockerfile               # Container configuration
 ├── start-api.sh            # Service startup script
 └── README.md               # API documentation
 ```
 
-### **Data Flow Architecture**
+### **Agentic AI Data Flow Architecture**
 ```
-Web Page Text → Content Script → Background Script → FastAPI → yfinance → Yahoo Finance
+Web Page Text → Content Script → Background Script → Chrome Popup
+                      ↓                    ↓
+                Extension Options ← Gemini API Key Configuration
                       ↓
-Chrome Popup ← UI Updates ← Data Processing ← Gemini AI ← Quarterly Analysis
+    🤖 AGENTIC AI ANALYSIS FLOW:
+    
+Quarterly Trends Tab → Background Script → FastAPI /agentic-analysis
+                            ↓
+    Gemini 2.0 Flash ← Initial Prompt: "Call fetch_quarterly_data & assess_financial_health"
+         ↓ (Function Calling)
+    Tool Execution → FinancialAnalysisTools.fetch_quarterly_data(AMZN)
+         ↓ (Results)
+    Gemini Analysis → "Found liquidity concerns, calling calculate_financial_ratios"
+         ↓ (Next Function Call)
+    Tool Execution → FinancialAnalysisTools.calculate_financial_ratios(AMZN, ["Current_Ratio"])
+         ↓ (Multi-iteration Analysis)
+    Smart Decision → "Need competitive context, calling compare_with_peers"
+         ↓ (Final Analysis)
+    AI Synthesis → "RECOMMENDATION: HOLD - Strong growth, monitor cash flow"
+         ↓
+Chrome Popup ← Comprehensive Analysis ← Background Script ← FastAPI Response
+
+    📊 TOOL ECOSYSTEM:
+    ├── fetch_quarterly_data     # Historical financial performance
+    ├── assess_financial_health  # 0-100 health scoring system
+    ├── calculate_financial_ratios # Valuation and profitability metrics
+    ├── compare_with_peers       # Competitive benchmarking
+    ├── get_analyst_consensus    # Professional analyst opinions
+    ├── fetch_market_context     # Broader economic conditions
+    └── detect_financial_anomalies # Red flag identification
 ```
 
 ---
@@ -206,11 +342,19 @@ Chrome Popup ← UI Updates ← Data Processing ← Gemini AI ← Quarterly Anal
 ## 🔧 **Advanced Features**
 
 ### **Professional-Grade API Management**
-- **Rate Limiting**: Prevents 429 "Too Many Requests" errors
-- **Exponential Backoff**: Smart retry logic for failed API calls
-- **Multi-Tier Fallback**: Primary FastAPI → Yahoo Finance v8 → v7 → v6 endpoints
+- **Gemini Rate Limiting**: Proactive 1.0s intervals + exponential backoff for 429 errors
+- **Multi-API Coordination**: Intelligent retry logic across Yahoo Finance, Gemini, and FastAPI
+- **Multi-Tier Fallback**: Primary FastAPI → Yahoo Finance v8 → v7 → v6 endpoints  
 - **In-Memory Caching**: 5-minute TTL with 1000-item capacity
-- **Error Recovery**: Graceful degradation when APIs are limited
+- **Agentic Error Recovery**: Smart fallback from agentic to static analysis
+
+### **Agentic AI Infrastructure**
+- **Function Calling Architecture**: Gemini 2.0 Flash with structured tool schemas
+- **Tool Registry**: Dynamic tool discovery and execution system
+- **Iteration Management**: 5-iteration maximum with smart conversation history  
+- **Context Preservation**: Multi-turn conversation state management
+- **Fallback Mechanisms**: Static analysis backup when agentic calls fail
+- **Performance Optimization**: Tool result caching and parallel execution
 
 ### **Enhanced Growth Calculations**
 Traditional stock extensions show static "stable" insights. This extension calculates **real financial trends**:
@@ -352,7 +496,18 @@ cd financial-api/
 
 ## 🔄 **Recent Updates**
 
-### **v3.0 - AI Analysis Integration (Latest)**
+### **v4.0 - Agentic AI Revolution (Latest)**
+- 🤖 **Agentic AI Intelligence**: AI dynamically chooses from 7 specialized financial tools
+- 🔧 **Multi-Step Analysis**: 3-5 iterations of intelligent decision-making per stock
+- 📊 **Complete Tool Ecosystem**: fetch_quarterly_data, assess_financial_health, calculate_financial_ratios, compare_with_peers, get_analyst_consensus, fetch_market_context, detect_financial_anomalies
+- ⚙️ **Options Configuration**: Professional options page with agentic vs static mode selection
+- 🎯 **Enhanced Recommendations**: 3-tier extraction system for more decisive BUY/SELL calls
+- 🚀 **Rate Limiting Mastery**: Comprehensive Gemini API rate limiting with exponential backoff
+- 💼 **Peer Analysis**: AI intelligently selects competitors and performs detailed comparisons
+- 👨‍💼 **Analyst Integration**: 31+ professional analyst opinions with consensus ratings
+- 🔧 **Debug Tools**: Built-in testing for function calling and individual tool verification
+
+### **v3.0 - AI Analysis Integration**
 - ✅ **Gemini 2.0 Flash AI**: Comprehensive quarterly data analysis
 - ✅ **Investment Recommendations**: BUY/HOLD/SELL with detailed rationale
 - ✅ **Enhanced Insights**: Real growth calculations (fixed "always stable" issue)
@@ -440,15 +595,16 @@ pip install -r requirements.txt
 
 ## 🏆 **Summary**
 
-This Chrome extension represents a **professional-grade stock analysis platform** that combines:
+This Chrome extension represents a **revolutionary agentic AI stock analysis platform** that combines:
 
-🤖 **AI-Powered Intelligence** - Gemini 2.0 Flash analysis with investment recommendations  
-📊 **Comprehensive Data** - Real-time prices, financial ratios, quarterly trends  
-⚡ **Professional Performance** - FastAPI backend, rate limiting, intelligent caching  
-🎨 **Modern UI** - Tabbed interface, interactive charts, responsive design  
+🤖 **Agentic AI Intelligence** - Dynamic 7-tool ecosystem with 3-5 iteration multi-step analysis  
+📊 **Institutional-Grade Data** - Real-time prices, financial ratios, analyst consensus, peer comparisons  
+⚡ **Professional Performance** - FastAPI backend, Gemini rate limiting, intelligent caching  
+🎨 **Modern UI** - Agentic badges, tool usage display, decisive recommendation systems  
 🔒 **Enterprise Security** - Privacy-focused, secure API management, no data collection  
+🎯 **Intelligent Decision-Making** - AI selects tools dynamically based on discovered insights
 
-**Perfect for traders, investors, and financial professionals who need instant, comprehensive stock analysis with AI-powered insights.**
+**The world's first agentic AI stock analysis Chrome extension - delivering institutional-quality analysis that adapts intelligently to each stock's unique characteristics.**
 
 ---
 

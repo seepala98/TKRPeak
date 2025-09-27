@@ -782,6 +782,43 @@ canvas {
     border-radius: 8px;
 }
 
+/* Agentic AI Badge Styles */
+.agentic-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, rgba(147, 51, 234, 0.2), rgba(79, 70, 229, 0.2));
+    border: 1px solid rgba(147, 51, 234, 0.4);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #a78bfa;
+}
+
+.agentic-details {
+    font-size: 10px;
+    font-weight: 400;
+    color: rgba(167, 139, 250, 0.8);
+    margin-left: 4px;
+}
+
+.fallback-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fbbf24;
+}
+
 .control-info {
     font-size: 10px;
     color: rgba(255, 255, 255, 0.7);

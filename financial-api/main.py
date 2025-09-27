@@ -18,6 +18,8 @@ import time
 import asyncio
 from functools import wraps
 import random
+import httpx
+from tools import FinancialAnalysisTools, TOOL_REGISTRY
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +35,10 @@ BASE_DELAY = 2.0  # Base delay for exponential backoff
 CACHE = {}
 CACHE_TTL = 300  # 5 minutes cache TTL
 CACHE_MAX_SIZE = 1000  # Maximum number of cached items
+
+# Gemini API specific rate limiting
+GEMINI_LAST_CALL = {}
+GEMINI_MIN_INTERVAL = 1.0  # Minimum seconds between Gemini API calls per key
 
 def get_cache_key(symbol, operation):
     """Generate cache key for a symbol and operation"""
@@ -974,6 +980,676 @@ def generate_quarterly_insights(trends_data):
         logger.error(f"Error generating insights: {e}")
     
     return insights
+
+# ===== AGENTIC AI ENDPOINTS =====
+
+class AgenticAnalysisRequest(BaseModel):
+    ticker: str
+    analysis_type: str = "comprehensive"  # comprehensive, quick, specific
+    focus_areas: Optional[List[str]] = None  # specific areas to focus on
+    gemini_api_key: str
+
+@app.post("/agentic-analysis")
+async def perform_agentic_analysis(request: AgenticAnalysisRequest):
+    """
+    Agentic AI Financial Analysis with Function Calling
+    AI dynamically decides what tools to use for comprehensive analysis
+    """
+    try:
+        logger.info(f"Starting agentic analysis for {request.ticker}")
+        
+        # Initialize the financial analysis tools
+        tools = FinancialAnalysisTools()
+        
+        # Define available tools for the AI
+        tool_schemas = [
+            {
+                "name": "fetch_quarterly_data",
+                "description": "Fetch quarterly financial data for specific periods and metrics",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "quarters": {"type": "integer", "minimum": 1, "maximum": 12},
+                        "metrics": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Specific metrics to fetch (revenue, net_income, free_cash_flow, etc.)"
+                        }
+                    },
+                    "required": ["ticker"]
+                }
+            },
+            {
+                "name": "calculate_financial_ratios",
+                "description": "Calculate specific financial ratios and compare to industry benchmarks",
+                "parameters": {
+                    "type": "object", 
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "ratios": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Ratios to calculate (P/E, ROE, Current_Ratio, Debt_to_Equity, etc.)"
+                        },
+                        "include_industry": {"type": "boolean"}
+                    },
+                    "required": ["ticker", "ratios"]
+                }
+            },
+            {
+                "name": "compare_with_peers",
+                "description": "ESSENTIAL: Compare company against competitors for proper valuation context. Without peer comparison, financial analysis is incomplete. Automatically selects relevant competitors and compares key metrics like revenue, profitability, valuation ratios. Critical for determining if metrics are good/bad relative to sector standards.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "peers": {
+                            "type": "array", 
+                            "items": {"type": "string"},
+                            "description": "Competitor ticker symbols (AI should choose 2-3 relevant competitors)"
+                        },
+                        "metrics": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Key metrics to compare: revenue, net_income, ROE, Current_Ratio, Debt_to_Equity, etc."
+                        }
+                    },
+                    "required": ["ticker", "peers", "metrics"]
+                }
+            },
+            {
+                "name": "get_analyst_consensus",
+                "description": "Get analyst ratings, price targets, and recommendations",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "include_history": {"type": "boolean"}
+                    },
+                    "required": ["ticker"]
+                }
+            },
+            {
+                "name": "fetch_market_context",
+                "description": "Get broader market conditions and sector performance",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "include_sector": {"type": "boolean"},
+                        "timeframe": {"type": "string", "enum": ["1M", "3M", "6M", "1Y"]}
+                    },
+                    "required": ["ticker"]
+                }
+            },
+            {
+                "name": "detect_financial_anomalies", 
+                "description": "Identify unusual patterns or red flags in financial data",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "lookback_periods": {"type": "integer", "minimum": 4, "maximum": 20},
+                        "sensitivity": {"type": "string", "enum": ["low", "medium", "high"]}
+                    },
+                    "required": ["ticker"]
+                }
+            },
+            {
+                "name": "assess_financial_health",
+                "description": "Calculate comprehensive financial health score and assessment",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "include_scores": {"type": "boolean"}
+                    },
+                    "required": ["ticker"]
+                }
+            }
+        ]
+        
+        # Create initial analysis prompt for Gemini
+        initial_prompt = f"""You are a DECISIVE financial analyst AI with access to specialized financial analysis tools. Your goal is to provide COMPREHENSIVE, ACTIONABLE investment recommendations.
+
+IMPORTANT: You have access to 7 financial analysis tools. You MUST call MULTIPLE tools to build a complete analysis before making conclusions.
+
+MANDATORY FIRST STEPS for {request.ticker}:
+1. IMMEDIATELY call fetch_quarterly_data for {request.ticker} to get recent quarterly financial data
+2. IMMEDIATELY call assess_financial_health for {request.ticker} to get overall financial health score
+
+COMPREHENSIVE ANALYSIS REQUIREMENTS - You MUST gather ALL these perspectives:
+3. ALWAYS call compare_with_peers to understand competitive positioning (this is CRITICAL for context)
+4. ALWAYS call get_analyst_consensus to get professional market sentiment
+5. Consider calling calculate_financial_ratios for detailed valuation analysis
+6. Consider calling fetch_market_context for broader economic conditions
+7. Consider calling detect_financial_anomalies if you spot any concerning patterns
+
+WHY PEER COMPARISON IS ESSENTIAL:
+- A P/E of 25 could be cheap or expensive depending on sector
+- Revenue growth of 10% might be excellent or poor vs competitors
+- Financial metrics only make sense in competitive context
+- Investors need to know: "Is this the best stock in its sector?"
+
+ANALYSIS DEPTH REQUIREMENTS:
+- Use AT LEAST 4-5 different tools for comprehensive analysis
+- Always include competitive benchmarking via compare_with_peers
+- Cross-validate findings across multiple data sources
+- Consider both absolute metrics AND relative performance
+
+ANALYSIS COMPLETION GUIDELINES:
+- After calling 4-5 tools (including compare_with_peers), STOP calling tools and SYNTHESIZE your findings
+- Integrate all tool results into a comprehensive analysis
+- Compare company performance vs peers using actual data from compare_with_peers
+- Reference specific numbers and rankings from your tool calls
+
+FINAL ANALYSIS REQUIREMENTS:
+- Be DECISIVE in your recommendation - avoid wishy-washy language
+- Choose ONE clear recommendation: STRONG BUY, BUY, HOLD, SELL, or STRONG SELL
+- Provide specific reasoning comparing to peers and market context
+- Address: Growth vs peers, valuation vs sector, competitive advantages/risks
+- Include specific metrics from your peer comparison (e.g., "NVDA ROE 45% vs AMD 25%")
+- End your analysis with: "RECOMMENDATION: [YOUR_CHOICE]" for clarity
+
+DO NOT provide any analysis or recommendations until you have called MULTIPLE tools and built comprehensive competitive context. After 4-5 tool calls, STOP calling tools and SYNTHESIZE your comprehensive analysis.
+
+Your task: Provide INSTITUTIONAL-QUALITY analysis of {request.ticker} with full competitive benchmarking. START NOW by calling fetch_quarterly_data and assess_financial_health, then ALWAYS call compare_with_peers for context."""
+
+        # Call Gemini with function calling capability
+        analysis_result = await call_gemini_with_function_calling(
+            initial_prompt, 
+            tool_schemas, 
+            tools,
+            request.gemini_api_key,
+            request.ticker
+        )
+        
+        logger.info(f"Agentic analysis completed for {request.ticker}")
+        
+        return {
+            "success": True,
+            "ticker": request.ticker,
+            "analysis_type": request.analysis_type,
+            "result": analysis_result
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in agentic analysis for {request.ticker}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Agentic analysis failed: {str(e)}")
+
+async def call_gemini_with_retry(request_data: Dict, api_key: str, iteration: int, max_retries: int = 3):
+    """
+    Call Gemini API with exponential backoff retry logic for rate limits
+    """
+    # Respect rate limiting - ensure minimum interval between calls
+    api_key_hash = api_key[:10]  # Use first 10 chars as identifier
+    current_time = time.time()
+    
+    if api_key_hash in GEMINI_LAST_CALL:
+        time_since_last = current_time - GEMINI_LAST_CALL[api_key_hash]
+        if time_since_last < GEMINI_MIN_INTERVAL:
+            sleep_time = GEMINI_MIN_INTERVAL - time_since_last
+            logger.info(f"Rate limiting: waiting {sleep_time:.1f}s before Gemini API call")
+            await asyncio.sleep(sleep_time)
+    
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
+                    json=request_data,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 429:
+                    # Rate limited - implement exponential backoff
+                    wait_time = (2 ** attempt) + random.uniform(1, 3)  # 2^attempt + 1-3 random seconds
+                    logger.warning(f"Rate limited (429) on iteration {iteration}, attempt {attempt + 1}. Waiting {wait_time:.1f}s...")
+                    await asyncio.sleep(wait_time)
+                    continue
+                
+                if not response.is_success:
+                    if attempt == max_retries - 1:  # Last attempt
+                        raise HTTPException(status_code=response.status_code, detail=f"Gemini API error: {response.text}")
+                    else:
+                        logger.warning(f"Gemini API error {response.status_code} on attempt {attempt + 1}, retrying...")
+                        await asyncio.sleep(1)
+                        continue
+                
+                # Update last successful call time
+                GEMINI_LAST_CALL[api_key_hash] = time.time()
+                return response.json()
+                
+        except httpx.TimeoutException:
+            if attempt == max_retries - 1:
+                raise HTTPException(status_code=408, detail="Gemini API timeout")
+            logger.warning(f"Timeout on attempt {attempt + 1}, retrying...")
+            await asyncio.sleep(2)
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise HTTPException(status_code=500, detail=f"Gemini API call failed: {str(e)}")
+            logger.warning(f"Error on attempt {attempt + 1}: {str(e)}, retrying...")
+            await asyncio.sleep(1)
+    
+    raise HTTPException(status_code=500, detail="Max retries exceeded for Gemini API")
+
+async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict], tools: FinancialAnalysisTools, api_key: str, ticker: str):
+    """
+    Call Gemini with function calling capability
+    AI can dynamically call tools based on its analysis needs
+    """
+    try:
+        max_iterations = 7  # Allow for comprehensive analysis with synthesis
+        iteration = 0
+        conversation_history = []
+        tool_results = {}
+        
+        # Initial conversation setup
+        conversation_history.append({
+            "role": "user",
+            "parts": [{"text": prompt}]
+        })
+        
+        while iteration < max_iterations:
+            logger.info(f"Agentic AI iteration {iteration + 1} for {ticker}")
+            
+            # Prepare Gemini request with function calling
+            request_data = {
+                "contents": conversation_history,
+                "tools": [{
+                    "function_declarations": tool_schemas
+                }],
+                "generationConfig": {
+                    "temperature": 0.1,  # Very low temperature for deterministic function calling
+                    "topK": 1,
+                    "topP": 0.1,
+                    "maxOutputTokens": 2048
+                }
+            }
+            
+            logger.info(f"Sending request to Gemini for iteration {iteration + 1}")
+            logger.info(f"Tools available: {[tool['name'] for tool in tool_schemas]}")
+            logger.info(f"Conversation history length: {len(conversation_history)}")
+            
+            # Call Gemini API with retry logic for rate limits
+            gemini_response = await call_gemini_with_retry(request_data, api_key, iteration + 1)
+            
+            if not gemini_response.get("candidates"):
+                logger.warning(f"No candidates in Gemini response for {ticker}")
+                break
+                
+            candidate = gemini_response["candidates"][0]
+            logger.info(f"Gemini response candidate: {candidate}")
+            
+            # Check if AI wants to call a function
+            content_parts = candidate.get("content", {}).get("parts", [])
+            has_function_call = any("functionCall" in part for part in content_parts)
+            
+            if has_function_call:
+                # Find all function calls in the response (there might be multiple)
+                function_calls_in_response = []
+                text_parts = []
+                
+                for part in content_parts:
+                    if "functionCall" in part:
+                        function_calls_in_response.append(part["functionCall"])
+                    elif "text" in part:
+                        text_parts.append(part["text"])
+                
+                logger.info(f"Found {len(function_calls_in_response)} function call(s) and {len(text_parts)} text part(s)")
+                
+                # Add any text responses to conversation first
+                if text_parts:
+                    conversation_history.append({
+                        "role": "model",
+                        "parts": [{"text": " ".join(text_parts)}]
+                    })
+                
+                # Execute each function call
+                for function_call in function_calls_in_response:
+                    function_name = function_call["name"]
+                    function_args = function_call.get("args", {})
+                    
+                    logger.info(f"AI calling function: {function_name} with args: {function_args}")
+                    
+                    # Execute the function call
+                    if function_name in TOOL_REGISTRY:
+                        try:
+                            # Ensure ticker is in the arguments
+                            if "ticker" not in function_args:
+                                function_args["ticker"] = ticker
+                                
+                            tool_result = await TOOL_REGISTRY[function_name](**function_args)
+                            tool_results[function_name] = tool_result
+                            
+                            logger.info(f"Tool {function_name} executed successfully: {tool_result.get('success', 'unknown')}")
+                            
+                            # Clean tool result for JSON serialization before adding to conversation
+                            def clean_for_json_agentic(obj):
+                                if isinstance(obj, dict):
+                                    return {k: clean_for_json_agentic(v) for k, v in obj.items()}
+                                elif isinstance(obj, list):
+                                    return [clean_for_json_agentic(item) for item in obj]
+                                elif hasattr(obj, 'item'):  # numpy scalar
+                                    return obj.item()
+                                elif hasattr(obj, 'tolist'):  # numpy array
+                                    return obj.tolist()
+                                else:
+                                    return obj
+                            
+                            clean_tool_result = clean_for_json_agentic(tool_result)
+                            
+                            # Add function call and result to conversation
+                            conversation_history.append({
+                                "role": "model",
+                                "parts": [{"functionCall": function_call}]
+                            })
+                            
+                            conversation_history.append({
+                                "role": "function",
+                                "parts": [{
+                                    "functionResponse": {
+                                        "name": function_name,
+                                        "response": clean_tool_result
+                                    }
+                                }]
+                            })
+                            
+                        except Exception as e:
+                            logger.error(f"Error executing function {function_name}: {str(e)}")
+                            # Add error to conversation
+                            conversation_history.append({
+                                "role": "function", 
+                                "parts": [{
+                                    "functionResponse": {
+                                        "name": function_name,
+                                        "response": {"success": False, "error": str(e)}
+                                    }
+                                }]
+                            })
+                    else:
+                        logger.warning(f"Function {function_name} not found in TOOL_REGISTRY")
+                
+            else:
+                # AI provided final analysis without function calls
+                final_analysis = candidate["content"]["parts"][0].get("text", "")
+                
+                # Clean tool_results for JSON serialization before final return
+                def clean_for_final_response(obj):
+                    if isinstance(obj, dict):
+                        return {k: clean_for_final_response(v) for k, v in obj.items()}
+                    elif isinstance(obj, list):
+                        return [clean_for_final_response(item) for item in obj]
+                    elif hasattr(obj, 'item'):  # numpy scalar
+                        return obj.item()
+                    elif hasattr(obj, 'tolist'):  # numpy array
+                        return obj.tolist()
+                    else:
+                        return obj
+                
+                clean_tool_results = clean_for_final_response(tool_results)
+                
+                return {
+                    "final_analysis": final_analysis,
+                    "tool_calls_made": len(tool_results),
+                    "tools_used": list(tool_results.keys()),
+                    "tool_results": clean_tool_results,
+                    "iterations": iteration + 1
+                }
+            
+            iteration += 1
+            
+            # Add small delay between iterations to respect rate limits
+            if iteration < max_iterations:
+                await asyncio.sleep(0.5)  # 500ms delay between iterations
+        
+        # Clean tool_results for JSON serialization before final return
+        def clean_for_final_response(obj):
+            if isinstance(obj, dict):
+                return {k: clean_for_final_response(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [clean_for_final_response(item) for item in obj]
+            elif hasattr(obj, 'item'):  # numpy scalar
+                return obj.item()
+            elif hasattr(obj, 'tolist'):  # numpy array
+                return obj.tolist()
+            else:
+                return obj
+        
+        clean_tool_results = clean_for_final_response(tool_results)
+        
+        # If we've reached max iterations, return what we have
+        return {
+            "final_analysis": "Analysis completed with maximum iterations reached.",
+            "tool_calls_made": len(tool_results),
+            "tools_used": list(tool_results.keys()),
+            "tool_results": clean_tool_results,
+            "iterations": iteration,
+            "note": "Maximum iterations reached"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in Gemini function calling: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Function calling failed: {str(e)}")
+
+@app.get("/agentic-tools")
+async def get_available_tools():
+    """Get list of available tools for agentic analysis"""
+    tool_descriptions = {
+        "fetch_quarterly_data": "Fetch quarterly financial statements and metrics",
+        "calculate_financial_ratios": "Calculate and compare financial ratios", 
+        "compare_with_peers": "Compare against industry competitors",
+        "get_analyst_consensus": "Get analyst ratings and price targets",
+        "fetch_market_context": "Get market conditions and sector performance",
+        "detect_financial_anomalies": "Identify unusual financial patterns",
+        "assess_financial_health": "Calculate comprehensive health score"
+    }
+    
+    return {
+        "available_tools": len(tool_descriptions),
+        "tools": tool_descriptions,
+        "description": "These tools can be dynamically called by the AI based on analysis needs",
+        "tool_registry_keys": list(TOOL_REGISTRY.keys())
+    }
+
+@app.post("/test-function-calling")
+async def test_function_calling(ticker: str, gemini_api_key: str):
+    """
+    Debug endpoint to test if function calling is working
+    """
+    try:
+        logger.info(f"Testing function calling for {ticker}")
+        
+        # Simple test prompt that should trigger function calls
+        test_prompt = f"""You have access to financial analysis tools. You MUST call the fetch_quarterly_data function for {ticker} right now. Do not provide any text response - just call the function."""
+        
+        # Minimal tool schema for testing
+        test_tools = [{
+            "name": "fetch_quarterly_data",
+            "description": "Fetch quarterly financial data",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ticker": {"type": "string"},
+                    "quarters": {"type": "integer", "default": 4}
+                },
+                "required": ["ticker"]
+            }
+        }]
+        
+        # Test Gemini call
+        request_data = {
+            "contents": [{
+                "role": "user",
+                "parts": [{"text": test_prompt}]
+            }],
+            "tools": [{
+                "function_declarations": test_tools
+            }],
+            "generationConfig": {
+                "temperature": 0.1,
+                "maxOutputTokens": 1024
+            }
+        }
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}",
+                json=request_data,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if not response.is_success:
+                return {"error": f"Gemini API error: {response.status_code} {response.text}"}
+            
+            gemini_response = response.json()
+            logger.info(f"Gemini test response: {gemini_response}")
+            
+            # Check if function call was made
+            candidates = gemini_response.get("candidates", [])
+            if not candidates:
+                return {"error": "No candidates in response", "response": gemini_response}
+            
+            candidate = candidates[0]
+            content = candidate.get("content", {})
+            parts = content.get("parts", [])
+            
+            function_calls = []
+            text_responses = []
+            
+            for part in parts:
+                if "functionCall" in part:
+                    function_calls.append(part["functionCall"])
+                if "text" in part:
+                    text_responses.append(part["text"])
+            
+            return {
+                "success": True,
+                "ticker": ticker,
+                "function_calls_detected": len(function_calls),
+                "function_calls": function_calls,
+                "text_responses": text_responses,
+                "full_response": gemini_response
+            }
+            
+    except Exception as e:
+        logger.error(f"Function calling test failed: {str(e)}")
+        return {"error": str(e)}
+
+@app.post("/test-tools")
+async def test_tools_directly(ticker: str):
+    """
+    Test individual tools directly to verify they work
+    """
+    try:
+        logger.info(f"Testing tools directly for {ticker}")
+        tools = FinancialAnalysisTools()
+        
+        results = {}
+        
+        # Test fetch_quarterly_data
+        try:
+            result = await tools.fetch_quarterly_data(ticker, quarters=4)
+            results["fetch_quarterly_data"] = {
+                "success": result.get("success", False),
+                "quarters": result.get("quarters", 0),
+                "has_data": len(result.get("data", [])) > 0
+            }
+        except Exception as e:
+            results["fetch_quarterly_data"] = {"error": str(e)}
+        
+        # Test assess_financial_health
+        try:
+            result = await tools.assess_financial_health(ticker, include_scores=True)
+            results["assess_financial_health"] = {
+                "success": result.get("success", False),
+                "overall_score": result.get("assessment", {}).get("overall_score", "N/A")
+            }
+        except Exception as e:
+            results["assess_financial_health"] = {"error": str(e)}
+        
+        # Test compare_with_peers (key tool that was failing)
+        try:
+            result = await tools.compare_with_peers(
+                ticker, 
+                peers=["WMT", "BABA"], 
+                metrics=["revenue", "net_income", "ROE", "Current_Ratio", "Debt_to_Equity"]
+            )
+            
+            if result.get("success", False):
+                comparison_data = result.get("comparison_data", {})
+                # Count how many metrics have non-null values
+                metrics_with_data = 0
+                total_metrics = 0
+                for company_data in comparison_data.values():
+                    for metric, value in company_data.items():
+                        if metric != "ticker":
+                            total_metrics += 1
+                            if value is not None:
+                                metrics_with_data += 1
+                
+                results["compare_with_peers"] = {
+                    "success": True,
+                    "companies_compared": len(comparison_data),
+                    "metrics_with_data": metrics_with_data,
+                    "total_metrics": total_metrics,
+                    "data_completeness": f"{metrics_with_data}/{total_metrics}",
+                    "comparison_data": comparison_data  # Include actual data for verification
+                }
+            else:
+                results["compare_with_peers"] = {
+                    "success": False,
+                    "error": result.get("error", "Unknown error")
+                }
+        except Exception as e:
+            results["compare_with_peers"] = {"error": str(e)}
+        
+        # Test get_analyst_consensus (failing tool)
+        try:
+            result = await tools.get_analyst_consensus(ticker, include_history=True)
+            
+            if result.get("success", False):
+                consensus = result.get("consensus", {})
+                analyst_targets = consensus.get("analyst_targets", {})
+                recommendations = consensus.get("recommendations", {})
+                
+                # Convert any numpy objects to native Python types for JSON serialization
+                def clean_for_json(obj):
+                    if isinstance(obj, dict):
+                        return {k: clean_for_json(v) for k, v in obj.items()}
+                    elif hasattr(obj, 'item'):  # numpy scalar
+                        return obj.item()
+                    elif hasattr(obj, 'tolist'):  # numpy array
+                        return obj.tolist()
+                    else:
+                        return obj
+                
+                results["get_analyst_consensus"] = {
+                    "success": True,
+                    "has_price_targets": len(analyst_targets) > 0 if analyst_targets else False,
+                    "has_recommendations": len(recommendations) > 0 if recommendations else False,
+                    "price_targets": clean_for_json(analyst_targets),
+                    "recommendations": clean_for_json(recommendations)
+                }
+            else:
+                results["get_analyst_consensus"] = {
+                    "success": False,
+                    "error": result.get("error", "Unknown error")
+                }
+        except Exception as e:
+            results["get_analyst_consensus"] = {"error": str(e)}
+        
+        return {
+            "success": True,
+            "ticker": ticker,
+            "tool_test_results": results,
+            "tool_registry_available": list(TOOL_REGISTRY.keys())
+        }
+        
+    except Exception as e:
+        logger.error(f"Direct tool test failed: {str(e)}")
+        return {"error": str(e)}
 
 @app.get("/basic/{symbol}")
 @rate_limit_decorator

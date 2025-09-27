@@ -357,26 +357,35 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           try {
             // Get Gemini API key from storage
             const storageResult = await new Promise(resolve => {
-              chrome.storage.sync.get(['geminiApiKey'], resolve);
+              chrome.storage.sync.get(['geminiApiKey', 'useAgenticAnalysis'], resolve);
             });
             
             if (!storageResult.geminiApiKey) {
               throw new Error("Gemini API Key not configured. Please set it in extension options.");
             }
 
-            console.log(`🔄 Starting AI analysis for ${request.ticker}...`);
+            console.log(`🔄 Starting ${storageResult.useAgenticAnalysis ? 'agentic' : 'static'} AI analysis for ${request.ticker}...`);
             
-            // Create comprehensive prompt for Gemini
-            const prompt = await createQuarterlyAnalysisPrompt(request.data, request.ticker);
+            let analysisResult;
             
-            const analysisResult = await callGeminiAPI(prompt, storageResult.geminiApiKey);
+            if (storageResult.useAgenticAnalysis) {
+              // Use new agentic AI analysis with function calling
+              analysisResult = await performAgenticAnalysis(request.ticker, storageResult.geminiApiKey, request.data);
+            } else {
+              // Use existing static analysis approach
+              const prompt = await createQuarterlyAnalysisPrompt(request.data, request.ticker);
+              analysisResult = await callGeminiAPI(prompt, storageResult.geminiApiKey);
+            }
             
             console.log(`✅ AI analysis successful for ${request.ticker}`);
             
             result = { 
               success: true, 
               analysis: analysisResult.analysis,
-              recommendation: analysisResult.recommendation
+              recommendation: analysisResult.recommendation,
+              isAgentic: storageResult.useAgenticAnalysis || false,
+              toolsUsed: analysisResult.tools_used || [],
+              iterations: analysisResult.iterations || 1
             };
             
           } catch (error) {
@@ -983,6 +992,98 @@ class YahooFinanceAdvancedAPI {
 }
 
 // ===== GEMINI AI INTEGRATION =====
+
+async function performAgenticAnalysis(ticker, apiKey, quarterlyData) {
+  try {
+    console.log(`🤖 Starting agentic AI analysis for ${ticker}`);
+    
+    // Call FastAPI agentic analysis endpoint
+    const response = await fetch('http://localhost:8000/agentic-analysis', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ticker: ticker,
+        analysis_type: 'comprehensive',
+        focus_areas: null,
+        gemini_api_key: apiKey
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`FastAPI agentic analysis failed: ${response.status} ${response.statusText}`);
+    }
+    
+    const agenticResult = await response.json();
+    
+    if (!agenticResult.success) {
+      throw new Error(agenticResult.error || 'Agentic analysis failed');
+    }
+    
+    console.log(`✅ Agentic AI analysis completed for ${ticker}:`);
+    console.log(`   Tools used: ${agenticResult.result.tools_used?.join(', ') || 'None'}`);
+    console.log(`   Iterations: ${agenticResult.result.iterations || 1}`);
+    console.log(`   Tool calls: ${agenticResult.result.tool_calls_made || 0}`);
+    
+    // Extract recommendation from final analysis with enhanced pattern matching
+    const finalAnalysis = agenticResult.result.final_analysis || '';
+    
+    // Try multiple extraction patterns
+    let recommendation = 'HOLD'; // Default fallback
+    
+    // Pattern 1: Direct recommendation format
+    let match = finalAnalysis.match(/RECOMMENDATION:\s*(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
+    if (match) {
+      recommendation = match[1].toUpperCase();
+    } else {
+      // Pattern 2: Standard recommendation keywords
+      match = finalAnalysis.match(/(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
+      if (match) {
+        recommendation = match[0].toUpperCase();
+      } else {
+        // Pattern 3: Contextual recommendations
+        const text = finalAnalysis.toLowerCase();
+        if (text.includes('strongly recommend buying') || text.includes('excellent investment') || text.includes('strong buy') || text.includes('compelling opportunity')) {
+          recommendation = 'STRONG BUY';
+        } else if (text.includes('recommend buying') || text.includes('good investment') || text.includes('attractive') || text.includes('undervalued')) {
+          recommendation = 'BUY';
+        } else if (text.includes('recommend selling') || text.includes('poor investment') || text.includes('overvalued') || text.includes('concerns')) {
+          recommendation = 'SELL';
+        } else if (text.includes('strongly avoid') || text.includes('significant risks') || text.includes('strong sell')) {
+          recommendation = 'STRONG SELL';
+        }
+        // If none match, keep HOLD as fallback
+      }
+    }
+    
+    return {
+      analysis: finalAnalysis,
+      recommendation: recommendation,
+      tools_used: agenticResult.result.tools_used || [],
+      iterations: agenticResult.result.iterations || 1,
+      tool_calls_made: agenticResult.result.tool_calls_made || 0,
+      tool_results: agenticResult.result.tool_results || {},
+      agentic: true
+    };
+    
+  } catch (error) {
+    console.error(`❌ Agentic AI analysis error for ${ticker}:`, error);
+    
+    // Fallback to static analysis if agentic fails
+    console.log(`🔄 Falling back to static analysis for ${ticker}`);
+    const prompt = await createQuarterlyAnalysisPrompt(quarterlyData, ticker);
+    const staticResult = await callGeminiAPI(prompt, apiKey);
+    
+    return {
+      ...staticResult,
+      fallback: true,
+      agentic: false,
+      fallback_reason: error.message
+    };
+  }
+}
+
 async function createQuarterlyAnalysisPrompt(data, ticker) {
   const { revenue_trends, cash_flow_trends, balance_sheet_trends } = data;
   
@@ -1054,7 +1155,7 @@ async function callGeminiAPI(prompt, apiKey) {
     try {
       console.log(`🤖 Calling Gemini API (attempt ${attempt + 1}/${maxRetries})`);
       
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1086,9 +1187,32 @@ async function callGeminiAPI(prompt, apiKey) {
 
       const fullText = data.candidates[0].content.parts[0].text;
       
-      // Extract recommendation from the response
-      const recommendationMatch = fullText.match(/(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
-      const recommendation = recommendationMatch ? recommendationMatch[0].toUpperCase() : 'HOLD';
+      // Extract recommendation from the response with enhanced pattern matching
+      let recommendation = 'HOLD'; // Default fallback
+      
+      // Pattern 1: Direct recommendation format  
+      let match = fullText.match(/RECOMMENDATION:\s*(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
+      if (match) {
+        recommendation = match[1].toUpperCase();
+      } else {
+        // Pattern 2: Standard recommendation keywords
+        match = fullText.match(/(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
+        if (match) {
+          recommendation = match[0].toUpperCase();
+        } else {
+          // Pattern 3: Contextual recommendations
+          const text = fullText.toLowerCase();
+          if (text.includes('strongly recommend buying') || text.includes('excellent investment') || text.includes('strong buy') || text.includes('compelling opportunity')) {
+            recommendation = 'STRONG BUY';
+          } else if (text.includes('recommend buying') || text.includes('good investment') || text.includes('attractive') || text.includes('undervalued')) {
+            recommendation = 'BUY';
+          } else if (text.includes('recommend selling') || text.includes('poor investment') || text.includes('overvalued') || text.includes('concerns')) {
+            recommendation = 'SELL';
+          } else if (text.includes('strongly avoid') || text.includes('significant risks') || text.includes('strong sell')) {
+            recommendation = 'STRONG SELL';
+          }
+        }
+      }
       
       // Clean up the analysis text
       const analysis = fullText.replace(/\*\*/g, '').trim();

@@ -1,28 +1,267 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>TKRPeak Options</title>
-  <style>
-    body { font-family: sans-serif; padding: 10px; width: 300px; }
-    h1 { font-size: 1.2em; }
-    div { margin-top: 10px; }
-    label { display: block; margin-bottom: 5px; }
-    input { width: 100%; padding: 5px; box-sizing: border-box; }
-    button { margin-top: 10px; padding: 8px 12px; }
-    #status { margin-top: 10px; color: green; }
-  </style>
+    <meta charset="utf-8">
+    <title>Stock Extension - AI Configuration</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: white;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+            background: linear-gradient(135deg, #a7f3d0, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .section h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: #a7f3d0;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        input[type="text"]::placeholder, input[type="password"]::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        input[type="text"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #10b981;
+        }
+
+        .checkbox-label {
+            margin-bottom: 0;
+            font-weight: 500;
+        }
+
+        .description {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+
+        .feature-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .feature-card {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .feature-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #a7f3d0;
+        }
+
+        .feature-list {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.4;
+        }
+
+        .feature-list li {
+            margin-bottom: 4px;
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .save-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .save-btn:active {
+            transform: translateY(0);
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .status.success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: #10b981;
+            opacity: 1;
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #ef4444;
+            opacity: 1;
+        }
+
+        .help-link {
+            color: #a7f3d0;
+            text-decoration: none;
+            font-size: 12px;
+        }
+
+        .help-link:hover {
+            text-decoration: underline;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            background: rgba(147, 51, 234, 0.2);
+            border: 1px solid rgba(147, 51, 234, 0.4);
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #a78bfa;
+            margin-left: 8px;
+        }
+    </style>
 </head>
 <body>
-  <h1>TKRPeak Settings</h1>
-  
-  <div>
-    <label for="apiKey">Gemini API Key:</label>
-    <input type="password" id="apiKey" placeholder="Enter your API key">
-  </div>
-  
-  <button id="save">Save</button>
-  <div id="status"></div>
+    <div class="container">
+        <h1>🤖 AI Configuration</h1>
+        
+        <div class="section">
+            <h2>🔑 Gemini API Configuration</h2>
+            <div class="form-group">
+                <label for="geminiApiKey">Gemini API Key</label>
+                <input type="password" id="geminiApiKey" placeholder="Enter your Gemini API key">
+                <div class="description">
+                    Get your free API key from <a href="https://ai.google.dev/" target="_blank" class="help-link">Google AI Studio</a>. 
+                    Required for AI-powered financial analysis.
+                </div>
+            </div>
+        </div>
 
-  <script src="options.js"></script>
+        <div class="section">
+            <h2>🚀 AI Analysis Type</h2>
+            <div class="checkbox-group">
+                <input type="checkbox" id="useAgenticAnalysis">
+                <label for="useAgenticAnalysis" class="checkbox-label">
+                    Enable Agentic AI Analysis <span class="badge">ADVANCED</span>
+                </label>
+            </div>
+            <div class="description">
+                Agentic AI can dynamically call specialized financial analysis tools based on what it discovers. 
+                Requires FastAPI service running locally.
+            </div>
+
+            <div class="feature-comparison">
+                <div class="feature-card">
+                    <div class="feature-title">📊 Static Analysis</div>
+                    <ul class="feature-list">
+                        <li>Pre-formatted quarterly data</li>
+                        <li>Fixed analysis pattern</li>
+                        <li>Works without FastAPI</li>
+                        <li>Faster response time</li>
+                        <li>Basic recommendations</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-title">🤖 Agentic Analysis</div>
+                    <ul class="feature-list">
+                        <li>Dynamic tool calling</li>
+                        <li>Peer comparisons</li>
+                        <li>Anomaly detection</li>
+                        <li>Market context analysis</li>
+                        <li>Adaptive exploration</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <button class="save-btn" id="saveBtn">💾 Save Configuration</button>
+        <div class="status" id="status"></div>
+    </div>
+
+    <script src="options.js"></script>
 </body>
 </html>
