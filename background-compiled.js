@@ -1029,31 +1029,42 @@ async function performAgenticAnalysis(ticker, apiKey, quarterlyData) {
     // Extract recommendation from final analysis with enhanced pattern matching
     const finalAnalysis = agenticResult.result.final_analysis || '';
     
+    // Debug logging to see what we're actually parsing
+    console.log('🔍 Debug: Final analysis text for recommendation extraction:');
+    console.log(finalAnalysis.substring(Math.max(0, finalAnalysis.length - 200))); // Last 200 chars
+    
     // Try multiple extraction patterns
     let recommendation = 'HOLD'; // Default fallback
     
-    // Pattern 1: Direct recommendation format
-    let match = finalAnalysis.match(/RECOMMENDATION:\s*(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
+    // Pattern 1: Direct recommendation format (handle markdown formatting and case-insensitive)
+    let match = finalAnalysis.match(/\*\*Recommendation:\*\*\s+(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
     if (match) {
       recommendation = match[1].toUpperCase();
+      console.log('✅ Recommendation extracted via Pattern 1 (Direct):', recommendation);
     } else {
-      // Pattern 2: Standard recommendation keywords
-      match = finalAnalysis.match(/(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
+      // Pattern 2: Final recommendation at end of text (avoid analyst sentiment matches)
+      match = finalAnalysis.match(/(?:^|\n|\.)[\s\*]*\*?\*?(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)\*?\*?[\s\*]*(?:\n|$)/i);
       if (match) {
-        recommendation = match[0].toUpperCase();
+        recommendation = match[1].toUpperCase();
+        console.log('✅ Recommendation extracted via Pattern 2 (Keywords):', recommendation);
       } else {
         // Pattern 3: Contextual recommendations
         const text = finalAnalysis.toLowerCase();
         if (text.includes('strongly recommend buying') || text.includes('excellent investment') || text.includes('strong buy') || text.includes('compelling opportunity')) {
           recommendation = 'STRONG BUY';
+          console.log('✅ Recommendation extracted via Pattern 3 (Contextual): STRONG BUY');
         } else if (text.includes('recommend buying') || text.includes('good investment') || text.includes('attractive') || text.includes('undervalued')) {
           recommendation = 'BUY';
+          console.log('✅ Recommendation extracted via Pattern 3 (Contextual): BUY');
         } else if (text.includes('recommend selling') || text.includes('poor investment') || text.includes('overvalued') || text.includes('concerns')) {
           recommendation = 'SELL';
+          console.log('✅ Recommendation extracted via Pattern 3 (Contextual): SELL');
         } else if (text.includes('strongly avoid') || text.includes('significant risks') || text.includes('strong sell')) {
           recommendation = 'STRONG SELL';
+          console.log('✅ Recommendation extracted via Pattern 3 (Contextual): STRONG SELL');
+        } else {
+          console.log('⚠️ No recommendation pattern matched, using fallback: HOLD');
         }
-        // If none match, keep HOLD as fallback
       }
     }
     
