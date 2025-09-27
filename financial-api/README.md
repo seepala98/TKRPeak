@@ -1,10 +1,27 @@
-# Stock Financial Data API
+# Stock Financial Data API with Agentic AI
 
-A FastAPI service that provides comprehensive stock financial data using the [yfinance Python package](https://ranaroussi.github.io/yfinance/). This service bypasses the limitations of direct Yahoo Finance API calls from JavaScript by providing a robust server-side solution.
+A FastAPI service that provides comprehensive stock financial data using the [yfinance Python package](https://ranaroussi.github.io/yfinance/) **enhanced with agentic AI capabilities**. Features dynamic tool calling for intelligent stock analysis that adapts to each company's unique characteristics.
 
 ## Features
 
-### Comprehensive Financial Data
+### 🤖 **Agentic AI Analysis**
+- **Dynamic Tool Selection**: AI chooses from 7 specialized financial analysis tools
+- **Multi-Step Intelligence**: 3-5 iterations of adaptive analysis per stock
+- **Gemini 2.0 Flash Integration**: Function calling with structured tool schemas
+- **Intelligent Decision Making**: AI determines next analysis steps based on discoveries
+- **Comprehensive Peer Analysis**: Automated competitor selection and comparison
+- **Professional Analyst Integration**: 31+ analyst consensus with ratings aggregation
+
+### 📊 **7 Specialized Financial Tools**
+1. **fetch_quarterly_data**: Historical financial performance with QoQ/YoY calculations
+2. **assess_financial_health**: 0-100 health scoring with detailed breakdown  
+3. **calculate_financial_ratios**: Valuation, profitability, and liquidity metrics
+4. **compare_with_peers**: Intelligent competitor analysis and benchmarking
+5. **get_analyst_consensus**: Professional analyst ratings and price targets
+6. **fetch_market_context**: Broader market conditions and sector performance
+7. **detect_financial_anomalies**: Red flag detection and risk assessment
+
+### 🎯 **Comprehensive Financial Data**
 - **Company Overview**: Market cap, enterprise value, shares outstanding, float shares
 - **Financial Performance**: Revenue, EBITDA, net income, EPS (TTM & forward)
 - **Balance Sheet**: Cash, debt, assets, equity, book value
@@ -12,14 +29,28 @@ A FastAPI service that provides comprehensive stock financial data using the [yf
 - **Valuation Ratios**: P/E, P/B, P/S, PEG, EV/Revenue, EV/EBITDA
 - **Profitability Ratios**: ROE, ROA, gross/operating/net margins
 - **Price Metrics**: Current price, 52-week high/low, YTD return
-- **Quarterly Data**: Last 4 quarters of revenue, earnings, and cash flow
+- **Quarterly Data**: Last 8 quarters of revenue, earnings, and cash flow
 
-### API Endpoints
+### 🔗 **API Endpoints**
+
+**🤖 Agentic AI Endpoints**
+- `POST /agentic-analysis` - Multi-step intelligent stock analysis with dynamic tool calling
+- `GET /agentic-tools` - List all available financial analysis tools
+- `POST /test-function-calling` - Debug endpoint to test Gemini function calling
+- `POST /test-tools` - Test individual financial analysis tools directly
+
+**📊 Financial Data Endpoints**  
 - `GET /financial/{symbol}` - Complete financial data for a stock
+- `GET /quarterly-trends/{symbol}` - Historical quarterly analysis with growth calculations
 - `GET /basic/{symbol}` - Basic stock information (quick response)
 - `GET /search/{query}` - Search for stock symbols (extensible)
-- `GET /health` - Health check endpoint
+
+**🔧 System Endpoints**
+- `GET /health` - Health check endpoint with rate limiting and cache status
+- `GET /cache/stats` - Detailed cache statistics and performance metrics
+- `POST /cache/clear` - Clear all cached data
 - `GET /docs` - Interactive API documentation (Swagger UI)
+- `GET /debug/{symbol}` - Debug raw yfinance data for troubleshooting
 
 ## Quick Start
 
@@ -50,7 +81,33 @@ This will:
 
 ## API Usage Examples
 
-### Get Complete Financial Data
+### 🤖 **Agentic AI Analysis**
+```bash
+# Intelligent multi-step stock analysis
+curl -X POST http://localhost:8000/agentic-analysis \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ticker": "AMZN",
+    "analysis_type": "comprehensive", 
+    "gemini_api_key": "your_gemini_api_key_here"
+  }'
+```
+
+**Expected Response:**
+```json
+{
+  "success": true,
+  "ticker": "AMZN",
+  "result": {
+    "final_analysis": "Amazon demonstrates mixed financial signals with a health score of 60/100. While revenue growth remains positive at 11% QoQ, the current ratio of 1.06 indicates potential liquidity constraints. Debt-to-equity of 0.46 is manageable but requires monitoring. AWS continues driving growth while retail margins face pressure. RECOMMENDATION: HOLD - Solid growth trajectory balanced by liquidity management concerns.",
+    "tools_used": ["fetch_quarterly_data", "assess_financial_health", "compare_with_peers"],
+    "iterations": 3,
+    "tool_calls_made": 5
+  }
+}
+```
+
+### 📊 **Get Complete Financial Data**
 ```bash
 curl http://localhost:8000/financial/AAPL
 ```
@@ -137,11 +194,34 @@ docker-compose logs -f
 5. **Caching Potential**: Can implement caching for better performance
 6. **Rate Limit Management**: Centralized API rate limit handling
 
-## Architecture
+## 🏗 **Architecture**
 
+### **🤖 Agentic AI Architecture**
+```
+Chrome Extension → FastAPI /agentic-analysis → Gemini 2.0 Flash
+     ↓                    ↓                         ↓ (Function Calls)
+Extension Options    Tool Registry            FinancialAnalysisTools
+     ↓                    ↓                         ↓
+Gemini API Key      Dynamic Tools              yfinance → Yahoo Finance
+                         ↓                         ↓
+                  Multi-Step Analysis      Intelligent Data Processing
+                         ↓                         ↓  
+              Comprehensive Report ← AI Synthesis ← Tool Results
+
+🔧 Tool Execution Flow:
+1. fetch_quarterly_data → Historical performance analysis
+2. assess_financial_health → Risk scoring and evaluation  
+3. calculate_financial_ratios → Valuation and profitability metrics
+4. compare_with_peers → Competitive benchmarking
+5. get_analyst_consensus → Professional market sentiment
+6. fetch_market_context → Economic and sector conditions
+7. detect_financial_anomalies → Red flag identification
+```
+
+### **📊 Traditional Data Flow**  
 ```
 Chrome Extension (JavaScript)
-           ↓ HTTP Request
+           ↓ HTTP Request  
 FastAPI Service (Python)
            ↓ yfinance
 Yahoo Finance (Official)
