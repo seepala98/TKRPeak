@@ -1029,15 +1029,16 @@ async function performAgenticAnalysis(ticker, apiKey, quarterlyData) {
     // Extract recommendation from final analysis with enhanced pattern matching
     const finalAnalysis = agenticResult.result.final_analysis || '';
     
-    // Debug logging to see what we're actually parsing
+    // Enhanced debug logging to see what we're actually parsing
     console.log('🔍 Debug: Final analysis text for recommendation extraction:');
     console.log(finalAnalysis.substring(Math.max(0, finalAnalysis.length - 200))); // Last 200 chars
+    console.log('🔍 Looking for explicit "Recommendation:" statement...');
     
     // Try multiple extraction patterns
     let recommendation = 'HOLD'; // Default fallback
     
-    // Pattern 1: Direct recommendation format (handle markdown formatting and case-insensitive)
-    let match = finalAnalysis.match(/\*\*Recommendation:\*\*\s+(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
+    // Pattern 1: Direct recommendation format (handle both markdown and plain text)
+    let match = finalAnalysis.match(/(?:\*\*)?Recommendation:(?:\*\*)?\s+(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)/i);
     if (match) {
       recommendation = match[1].toUpperCase();
       console.log('✅ Recommendation extracted via Pattern 1 (Direct):', recommendation);
@@ -1048,18 +1049,19 @@ async function performAgenticAnalysis(ticker, apiKey, quarterlyData) {
         recommendation = match[1].toUpperCase();
         console.log('✅ Recommendation extracted via Pattern 2 (Keywords):', recommendation);
       } else {
-        // Pattern 3: Contextual recommendations
+        // Pattern 3: More precise contextual recommendations (only when explicit recommendation missing)
         const text = finalAnalysis.toLowerCase();
-        if (text.includes('strongly recommend buying') || text.includes('excellent investment') || text.includes('strong buy') || text.includes('compelling opportunity')) {
+        // Only use contextual patterns if no explicit recommendation was found
+        if (text.includes('strongly recommend buying this') || text.includes('excellent investment opportunity') || text.includes('strong buy recommendation')) {
           recommendation = 'STRONG BUY';
           console.log('✅ Recommendation extracted via Pattern 3 (Contextual): STRONG BUY');
-        } else if (text.includes('recommend buying') || text.includes('good investment') || text.includes('attractive') || text.includes('undervalued')) {
+        } else if (text.includes('recommend buying this') || text.includes('good investment opportunity') || text.includes('attractive buying opportunity')) {
           recommendation = 'BUY';
           console.log('✅ Recommendation extracted via Pattern 3 (Contextual): BUY');
-        } else if (text.includes('recommend selling') || text.includes('poor investment') || text.includes('overvalued') || text.includes('concerns')) {
+        } else if (text.includes('recommend selling this') || text.includes('poor investment choice') || text.includes('significantly overvalued')) {
           recommendation = 'SELL';
           console.log('✅ Recommendation extracted via Pattern 3 (Contextual): SELL');
-        } else if (text.includes('strongly avoid') || text.includes('significant risks') || text.includes('strong sell')) {
+        } else if (text.includes('strongly avoid this') || text.includes('serious red flags') || text.includes('strong sell recommendation')) {
           recommendation = 'STRONG SELL';
           console.log('✅ Recommendation extracted via Pattern 3 (Contextual): STRONG SELL');
         } else {
@@ -1211,15 +1213,15 @@ async function callGeminiAPI(prompt, apiKey) {
         if (match) {
           recommendation = match[0].toUpperCase();
         } else {
-          // Pattern 3: Contextual recommendations
+          // Pattern 3: More precise contextual recommendations  
           const text = fullText.toLowerCase();
-          if (text.includes('strongly recommend buying') || text.includes('excellent investment') || text.includes('strong buy') || text.includes('compelling opportunity')) {
+          if (text.includes('strongly recommend buying this') || text.includes('excellent investment opportunity') || text.includes('strong buy recommendation')) {
             recommendation = 'STRONG BUY';
-          } else if (text.includes('recommend buying') || text.includes('good investment') || text.includes('attractive') || text.includes('undervalued')) {
+          } else if (text.includes('recommend buying this') || text.includes('good investment opportunity') || text.includes('attractive buying opportunity')) {
             recommendation = 'BUY';
-          } else if (text.includes('recommend selling') || text.includes('poor investment') || text.includes('overvalued') || text.includes('concerns')) {
+          } else if (text.includes('recommend selling this') || text.includes('poor investment choice') || text.includes('significantly overvalued')) {
             recommendation = 'SELL';
-          } else if (text.includes('strongly avoid') || text.includes('significant risks') || text.includes('strong sell')) {
+          } else if (text.includes('strongly avoid this') || text.includes('serious red flags') || text.includes('strong sell recommendation')) {
             recommendation = 'STRONG SELL';
           }
         }
