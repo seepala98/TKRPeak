@@ -145,25 +145,29 @@ Revolutionary **agentic AI** that doesn't just analyze pre-formatted data—it *
 
 **Example: AMZN Analysis Journey**
 ```
-🤖 Iteration 1: Basic Assessment
-   ✅ Called: fetch_quarterly_data, assess_financial_health
-   📊 Found: Health score 60/100, liquidity concerns
+🤖 Iteration 1: Quarterly & Health Assessment
+   ✅ Called: fetch_quarterly_data, assess_financial_health  
+   📊 Found: Health score 60/100, liquidity concerns, profit margin 10.54%
 
-🤖 Iteration 2: Ratio Deep-Dive  
-   ✅ Called: calculate_financial_ratios
-   📊 Found: Current ratio 1.06 (tight), ROE strong at 24.77%
+🤖 Iteration 2: Competitive Benchmarking
+   ✅ Called: compare_with_peers (GOOGL, MSFT, META)
+   📊 Found: Revenue leader $670.04B, but lowest ROE 24.77% vs peers 33-41%
 
-🤖 Iteration 3: Competitive Context
-   ✅ Called: compare_with_peers (WMT, BABA)  
-   📊 Found: Revenue growth competitive, liquidity below peers
-
-🤖 Iteration 4: Market Sentiment
+🤖 Iteration 3: Professional Sentiment  
    ✅ Called: get_analyst_consensus
-   📊 Found: 15 Buy, 8 Hold, 2 Sell ratings
+   📊 Found: Strong bullish consensus - 49 Buy, 14 Strong Buy, 3 Hold, 0 Sell
 
-🎯 Final AI Recommendation: HOLD
-   💡 Reasoning: "Strong growth trajectory balanced by liquidity 
-      management concerns. Monitor Q4 cash flow closely."
+🤖 Iteration 4: Valuation Analysis
+   ✅ Called: calculate_financial_ratios  
+   📊 Found: P/E 33.55, Current Ratio 1.02 (lowest), D/E 47.81% (highest)
+
+🤖 Iteration 5: Market Context
+   ✅ Called: fetch_market_context
+   📊 Found: NASDAQ +26.29%, Consumer Cyclical +18.33% (6-month)
+
+🎯 Final AI Recommendation: BUY (Stock Price: $219.78)
+   💡 Reasoning: "Revenue dominance and strong analyst sentiment outweigh 
+      liquidity concerns. Market tailwinds support growth trajectory."
 ```
 
 ### **🎛️ Dual Analysis Modes**

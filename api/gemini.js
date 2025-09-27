@@ -36,7 +36,7 @@ export class GeminiAPI {
     try {
       const geminiResponse = await this.retry(async () => {
         console.log("🎯 Gemini API: Making request to Gemini 2.0 Flash");
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

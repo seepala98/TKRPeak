@@ -38,7 +38,7 @@ CACHE_MAX_SIZE = 1000  # Maximum number of cached items
 
 # Gemini API specific rate limiting
 GEMINI_LAST_CALL = {}
-GEMINI_MIN_INTERVAL = 1.0  # Minimum seconds between Gemini API calls per key
+GEMINI_MIN_INTERVAL = 2.5  # Minimum seconds between Gemini API calls per key (increased to prevent 429 errors)
 
 def get_cache_key(symbol, operation):
     """Generate cache key for a symbol and operation"""
@@ -1052,7 +1052,8 @@ async def perform_agentic_analysis(request: AgenticAnalysisRequest):
                         "metrics": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "description": "Key metrics to compare: revenue, net_income, ROE, Current_Ratio, Debt_to_Equity, etc."
+                            "description": "REQUIRED: Financial metrics to compare. Use these standard metrics: ['revenue', 'net_income', 'ROE', 'Current_Ratio', 'Debt_to_Equity'] for comprehensive analysis.",
+                            "default": ["revenue", "net_income", "ROE", "Current_Ratio", "Debt_to_Equity"]
                         }
                     },
                     "required": ["ticker", "peers", "metrics"]
@@ -1150,7 +1151,7 @@ FINAL ANALYSIS REQUIREMENTS:
 - Provide specific reasoning comparing to peers and market context
 - Address: Growth vs peers, valuation vs sector, competitive advantages/risks
 - Include specific metrics from your peer comparison (e.g., "NVDA ROE 45% vs AMD 25%")
-- End your analysis with: "RECOMMENDATION: [YOUR_CHOICE]" for clarity
+- End your analysis with: "Recommendation: [YOUR_CHOICE]" for clarity
 
 DO NOT provide any analysis or recommendations until you have called MULTIPLE tools and built comprehensive competitive context. After 4-5 tool calls, STOP calling tools and SYNTHESIZE your comprehensive analysis.
 
@@ -1197,14 +1198,14 @@ async def call_gemini_with_retry(request_data: Dict, api_key: str, iteration: in
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
+                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={api_key}",
                     json=request_data,
                     headers={"Content-Type": "application/json"}
                 )
                 
                 if response.status_code == 429:
                     # Rate limited - implement exponential backoff
-                    wait_time = (2 ** attempt) + random.uniform(1, 3)  # 2^attempt + 1-3 random seconds
+                    wait_time = (3 ** attempt) + random.uniform(2, 5)  # 3^attempt + 2-5 random seconds (more aggressive backoff)
                     logger.warning(f"Rate limited (429) on iteration {iteration}, attempt {attempt + 1}. Waiting {wait_time:.1f}s...")
                     await asyncio.sleep(wait_time)
                     continue
@@ -1319,11 +1320,38 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
                             # Ensure ticker is in the arguments
                             if "ticker" not in function_args:
                                 function_args["ticker"] = ticker
+                            
+                            # Handle compare_with_peers missing metrics (Gemini sometimes omits required params)
+                            if function_name == "compare_with_peers" and "metrics" not in function_args:
+                                function_args["metrics"] = ["revenue", "net_income", "ROE", "Current_Ratio", "Debt_to_Equity"]
+                                logger.info(f"Added default metrics to compare_with_peers: {function_args['metrics']}")
                                 
                             tool_result = await TOOL_REGISTRY[function_name](**function_args)
                             tool_results[function_name] = tool_result
                             
                             logger.info(f"Tool {function_name} executed successfully: {tool_result.get('success', 'unknown')}")
+                            
+                            # Log detailed tool response for debugging
+                            logger.info(f"=== TOOL RESPONSE: {function_name} ===")
+                            if isinstance(tool_result, dict):
+                                # Log key information from tool result
+                                for key, value in tool_result.items():
+                                    if key in ['success', 'error']:
+                                        continue  # Skip basic status fields
+                                    
+                                    # Truncate long values for readability
+                                    if isinstance(value, (str, list, dict)):
+                                        value_str = str(value)
+                                        if len(value_str) > 200:
+                                            value_preview = value_str[:200] + "... [truncated]"
+                                        else:
+                                            value_preview = value_str
+                                        logger.info(f"  {key}: {value_preview}")
+                                    else:
+                                        logger.info(f"  {key}: {value}")
+                            else:
+                                logger.info(f"  Raw response: {str(tool_result)[:300]}...")
+                            logger.info(f"=== END TOOL RESPONSE: {function_name} ===")
                             
                             # Clean tool result for JSON serialization before adding to conversation
                             def clean_for_json_agentic(obj):
@@ -1358,6 +1386,8 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
                             
                         except Exception as e:
                             logger.error(f"Error executing function {function_name}: {str(e)}")
+                            logger.error(f"Function args were: {function_args}")
+                            logger.error(f"Function signature: {TOOL_REGISTRY[function_name]}")
                             # Add error to conversation
                             conversation_history.append({
                                 "role": "function", 
@@ -1374,6 +1404,11 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
             else:
                 # AI provided final analysis without function calls
                 final_analysis = candidate["content"]["parts"][0].get("text", "")
+                
+                # Log the complete final analysis
+                logger.info(f"=== FINAL AI ANALYSIS FOR {ticker} ===")
+                logger.info(f"{final_analysis}")
+                logger.info(f"=== END FINAL ANALYSIS ===")
                 
                 # Clean tool_results for JSON serialization before final return
                 def clean_for_final_response(obj):
@@ -1400,9 +1435,9 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
             
             iteration += 1
             
-            # Add small delay between iterations to respect rate limits
+            # Add delay between iterations to respect rate limits (increased due to heavy API usage)
             if iteration < max_iterations:
-                await asyncio.sleep(0.5)  # 500ms delay between iterations
+                await asyncio.sleep(3.0)  # 3 seconds between iterations for better API stability
         
         # Clean tool_results for JSON serialization before final return
         def clean_for_final_response(obj):
@@ -1420,6 +1455,11 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
         clean_tool_results = clean_for_final_response(tool_results)
         
         # If we've reached max iterations, return what we have
+        logger.info(f"=== MAX ITERATIONS REACHED FOR {ticker} ===")
+        logger.info(f"Completed {iteration} iterations with tools: {list(tool_results.keys())}")
+        logger.info(f"Tool calls made: {len(tool_results)}")
+        logger.info(f"=== END MAX ITERATIONS SUMMARY ===")
+        
         return {
             "final_analysis": "Analysis completed with maximum iterations reached.",
             "tool_calls_made": len(tool_results),
@@ -1495,7 +1535,7 @@ async def test_function_calling(ticker: str, gemini_api_key: str):
         
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={gemini_api_key}",
                 json=request_data,
                 headers={"Content-Type": "application/json"}
             )
@@ -1603,6 +1643,8 @@ async def test_tools_directly(ticker: str):
                     "error": result.get("error", "Unknown error")
                 }
         except Exception as e:
+            logger.error(f"Error in test-tools compare_with_peers: {str(e)}")
+            logger.error(f"Test args were - ticker: {ticker}, peers: ['WMT', 'BABA'], metrics: ['revenue', 'net_income', 'ROE', 'Current_Ratio', 'Debt_to_Equity']")
             results["compare_with_peers"] = {"error": str(e)}
         
         # Test get_analyst_consensus (failing tool)
