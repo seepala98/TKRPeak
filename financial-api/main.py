@@ -38,7 +38,7 @@ CACHE_MAX_SIZE = 1000  # Maximum number of cached items
 
 # Gemini API specific rate limiting
 GEMINI_LAST_CALL = {}
-GEMINI_MIN_INTERVAL = 1.0  # Minimum seconds between Gemini API calls per key
+GEMINI_MIN_INTERVAL = 2.5  # Minimum seconds between Gemini API calls per key (increased to prevent 429 errors)
 
 def get_cache_key(symbol, operation):
     """Generate cache key for a symbol and operation"""
@@ -1205,7 +1205,7 @@ async def call_gemini_with_retry(request_data: Dict, api_key: str, iteration: in
                 
                 if response.status_code == 429:
                     # Rate limited - implement exponential backoff
-                    wait_time = (2 ** attempt) + random.uniform(1, 3)  # 2^attempt + 1-3 random seconds
+                    wait_time = (3 ** attempt) + random.uniform(2, 5)  # 3^attempt + 2-5 random seconds (more aggressive backoff)
                     logger.warning(f"Rate limited (429) on iteration {iteration}, attempt {attempt + 1}. Waiting {wait_time:.1f}s...")
                     await asyncio.sleep(wait_time)
                     continue
@@ -1408,9 +1408,9 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
             
             iteration += 1
             
-            # Add small delay between iterations to respect rate limits
+            # Add delay between iterations to respect rate limits (increased due to heavy API usage)
             if iteration < max_iterations:
-                await asyncio.sleep(0.5)  # 500ms delay between iterations
+                await asyncio.sleep(3.0)  # 3 seconds between iterations for better API stability
         
         # Clean tool_results for JSON serialization before final return
         def clean_for_final_response(obj):
