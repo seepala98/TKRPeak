@@ -4,6 +4,6 @@
 echo "🛑 Stopping Stock Financial API Service..."
 
 # Stop the Docker containers
-docker-compose down
+docker compose down
 
 echo "✅ Stock Financial API Service stopped."
