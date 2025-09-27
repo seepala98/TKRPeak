@@ -1198,7 +1198,7 @@ async def call_gemini_with_retry(request_data: Dict, api_key: str, iteration: in
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
+                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={api_key}",
                     json=request_data,
                     headers={"Content-Type": "application/json"}
                 )
@@ -1331,6 +1331,28 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
                             
                             logger.info(f"Tool {function_name} executed successfully: {tool_result.get('success', 'unknown')}")
                             
+                            # Log detailed tool response for debugging
+                            logger.info(f"=== TOOL RESPONSE: {function_name} ===")
+                            if isinstance(tool_result, dict):
+                                # Log key information from tool result
+                                for key, value in tool_result.items():
+                                    if key in ['success', 'error']:
+                                        continue  # Skip basic status fields
+                                    
+                                    # Truncate long values for readability
+                                    if isinstance(value, (str, list, dict)):
+                                        value_str = str(value)
+                                        if len(value_str) > 200:
+                                            value_preview = value_str[:200] + "... [truncated]"
+                                        else:
+                                            value_preview = value_str
+                                        logger.info(f"  {key}: {value_preview}")
+                                    else:
+                                        logger.info(f"  {key}: {value}")
+                            else:
+                                logger.info(f"  Raw response: {str(tool_result)[:300]}...")
+                            logger.info(f"=== END TOOL RESPONSE: {function_name} ===")
+                            
                             # Clean tool result for JSON serialization before adding to conversation
                             def clean_for_json_agentic(obj):
                                 if isinstance(obj, dict):
@@ -1383,6 +1405,11 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
                 # AI provided final analysis without function calls
                 final_analysis = candidate["content"]["parts"][0].get("text", "")
                 
+                # Log the complete final analysis
+                logger.info(f"=== FINAL AI ANALYSIS FOR {ticker} ===")
+                logger.info(f"{final_analysis}")
+                logger.info(f"=== END FINAL ANALYSIS ===")
+                
                 # Clean tool_results for JSON serialization before final return
                 def clean_for_final_response(obj):
                     if isinstance(obj, dict):
@@ -1428,6 +1455,11 @@ async def call_gemini_with_function_calling(prompt: str, tool_schemas: List[Dict
         clean_tool_results = clean_for_final_response(tool_results)
         
         # If we've reached max iterations, return what we have
+        logger.info(f"=== MAX ITERATIONS REACHED FOR {ticker} ===")
+        logger.info(f"Completed {iteration} iterations with tools: {list(tool_results.keys())}")
+        logger.info(f"Tool calls made: {len(tool_results)}")
+        logger.info(f"=== END MAX ITERATIONS SUMMARY ===")
+        
         return {
             "final_analysis": "Analysis completed with maximum iterations reached.",
             "tool_calls_made": len(tool_results),
@@ -1503,7 +1535,7 @@ async def test_function_calling(ticker: str, gemini_api_key: str):
         
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={gemini_api_key}",
                 json=request_data,
                 headers={"Content-Type": "application/json"}
             )

@@ -1166,7 +1166,7 @@ async function callGeminiAPI(prompt, apiKey) {
     try {
       console.log(`🤖 Calling Gemini API (attempt ${attempt + 1}/${maxRetries})`);
       
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
